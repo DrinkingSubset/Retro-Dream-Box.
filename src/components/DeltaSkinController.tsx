@@ -265,15 +265,13 @@ function HitRegion({ item, scale, onInput, onMenu, onPress }: HitRegionProps) {
         type="button"
         aria-label={inputs.join("+")}
         className="absolute bg-transparent active:bg-white/10 rounded-md transition-colors"
-        style={{ left, top, width, height }}
+        style={{ left, top, width, height, pointerEvents: "auto" }}
         {...handlers}
       />
     );
   }
 
   // ----- D-pad: subdivide into 4 zones (up/down/left/right). -----
-  // We track which zone is currently active per-pointer so dragging from
-  // up→left releases up and presses left, just like a real pad.
   if (isDpad) {
     return <DpadRegion left={left} top={top} width={width} height={height} onInput={onInput} onPress={onPress} />;
   }
