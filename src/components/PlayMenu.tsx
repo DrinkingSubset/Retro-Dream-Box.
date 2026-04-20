@@ -38,16 +38,13 @@ export default function PlayMenu({ gameId, onToggleHoldMode, holdMode }: Props) 
       const e = emu();
       if (!e?.gameManager?.getState) throw new Error("Emulator not ready");
       const state: Uint8Array = e.gameManager.getState();
-      const screenshot: Uint8Array | undefined = e.gameManager.screenshot?.();
-      // Persist to IndexedDB via a plain key in localStorage-equivalent
       const key = `delta-state:${gameId}`;
-      const blob = new Blob([state], { type: "application/octet-stream" });
-      const buf = await blob.arrayBuffer();
+      // Copy into a fresh ArrayBuffer to avoid SharedArrayBuffer typing issues
+      const buf = new ArrayBuffer(state.byteLength);
+      new Uint8Array(buf).set(state);
       localStorage.setItem(key + ":ts", String(Date.now()));
-      // Use IndexedDB-via-idb-keyval style: simple object store
       const { set } = await import("idb-keyval");
       await set(key, buf);
-      if (screenshot) await set(key + ":shot", screenshot);
       toast({ title: "State saved" });
     } catch (err: any) {
       toast({ title: "Save failed", description: err?.message, variant: "destructive" });
