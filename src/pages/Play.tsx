@@ -344,16 +344,18 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef }: P
             </div>
           )}
 
-          {/* Skin overlay — fills the play area beneath the header. */}
-          <div className="absolute inset-0 z-10 pointer-events-none">
-            <div className="w-full h-full pointer-events-auto">
-              <DeltaSkinController
-                skinUrl={skinUrl}
-                orientation={orientation}
-                onInput={sendInput}
-                onScreenRect={handleScreenRect}
-              />
-            </div>
+          {/* Skin overlay — fills the play area beneath the header. The
+              skin itself uses pointer-events:none on its wrapper and only
+              re-enables them on actual hit regions, so the EJS canvas
+              underneath still receives clicks (e.g. its "press to start"
+              overlay). */}
+          <div className="absolute inset-0 z-10">
+            <DeltaSkinController
+              skinUrl={skinUrl}
+              orientation={orientation}
+              onInput={sendInput}
+              onScreenRect={handleScreenRect}
+            />
           </div>
         </div>
       ) : (
