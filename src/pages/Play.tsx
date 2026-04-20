@@ -444,6 +444,11 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
       <div className="hidden lg:block text-center text-xs text-muted-foreground pb-3 px-4">
         Keyboard: Arrow keys · Z = B · X = A · A = Y · S = X · Q/W = L/R · Enter = Start · Shift = Select
       </div>
+
+      {/* Floating bottom-left menu — save state, cheats, fast forward, etc. */}
+      {game && started && (
+        <PlayMenu gameId={game.id} holdMode={holdMode} onToggleHoldMode={onToggleHoldMode} />
+      )}
     </div>
   );
 }
