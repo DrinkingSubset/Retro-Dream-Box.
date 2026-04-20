@@ -151,30 +151,67 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
     };
   }, [size, aspect, orientation]);
 
+  // Compute the game-screen rect within the skin's mappingSize coordinate
+  // system. Most Delta skins don't include an explicit `screens` field, so
+  // we infer it from the empty space inside the items' bounding box:
+  //   - Landscape: items hug the left and right edges → screen sits in the
+  //     horizontal gap between them.
+  //   - Portrait: items are clustered at the bottom → screen fills the
+  //     space above them (full width).
+  const screenMappingRect = useMemo(() => {
+    const items = rep.items;
+    if (items.length === 0) {
+      return { x: 0, y: 0, width: rep.mappingWidth, height: rep.mappingHeight };
+    }
+
+    if (orientation === "landscape") {
+      // Find the gap between left-cluster and right-cluster items.
+      const half = rep.mappingWidth / 2;
+      let leftEdge = 0;
+      let rightEdge = rep.mappingWidth;
+      for (const it of items) {
+        const cx = it.frame.x + it.frame.width / 2;
+        if (cx < half) {
+          leftEdge = Math.max(leftEdge, it.frame.x + it.frame.width);
+        } else {
+          rightEdge = Math.min(rightEdge, it.frame.x);
+        }
+      }
+      const pad = rep.mappingWidth * 0.015;
+      return {
+        x: leftEdge + pad,
+        y: 0,
+        width: Math.max(0, rightEdge - leftEdge - pad * 2),
+        height: rep.mappingHeight,
+      };
+    }
+
+    // Portrait: screen sits above all items.
+    const minY = Math.min(...items.map((i) => i.frame.y));
+    const pad = rep.mappingHeight * 0.01;
+    return {
+      x: 0,
+      y: 0,
+      width: rep.mappingWidth,
+      height: Math.max(0, minY - pad),
+    };
+  }, [rep, orientation]);
+
   // Report the screen-slot rect (in viewport coordinates) to the parent so
   // it can position the EmulatorJS canvas exactly inside it.
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || !onScreenRect || !size.w) return;
+    if (!el || !onScreenRect || !skinRect.width) return;
     const c = el.getBoundingClientRect();
-    if (orientation === "portrait") {
-      // Screen sits in the area above the skin, full container width.
-      onScreenRect({
-        left: c.left,
-        top: c.top,
-        width: size.w,
-        height: skinRect.top,
-      });
-    } else {
-      // Screen fills the container; controls float on top.
-      onScreenRect({
-        left: c.left,
-        top: c.top,
-        width: size.w,
-        height: size.h,
-      });
-    }
-  }, [size, skinRect, orientation, onScreenRect]);
+    const sx = skinRect.width / rep.mappingWidth;
+    const sy = skinRect.height / rep.mappingHeight;
+    onScreenRect({
+      left: c.left + skinRect.left + screenMappingRect.x * sx,
+      top: c.top + skinRect.top + screenMappingRect.y * sy,
+      width: screenMappingRect.width * sx,
+      height: screenMappingRect.height * sy,
+    });
+  }, [size, skinRect, screenMappingRect, rep, onScreenRect]);
 
   // Convert a logical mappingSize coordinate to a CSS pixel offset within
   // the skin rect. This is the core of pixel-faithful hit-target mapping.
