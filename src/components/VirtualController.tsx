@@ -118,20 +118,20 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
         {/* D-Pad — bottom left */}
         <div className="pointer-events-auto absolute bottom-2 left-2 grid grid-cols-3 grid-rows-3 gap-0">
           <div />
-          <button {...press("UP")} className={`${dpadCls} rounded-t-lg`}>▲</button>
+          <button {...press("UP")} style={dpadBtnStyle} className={`${dpadCls} rounded-t-lg`}>▲</button>
           <div />
-          <button {...press("LEFT")} className={`${dpadCls} rounded-l-lg`}>◀</button>
-          <div className={dpadCenterCls} />
-          <button {...press("RIGHT")} className={`${dpadCls} rounded-r-lg`}>▶</button>
+          <button {...press("LEFT")} style={dpadBtnStyle} className={`${dpadCls} rounded-l-lg`}>◀</button>
+          <div style={dpadBtnStyle} className={dpadCenterCls} />
+          <button {...press("RIGHT")} style={dpadBtnStyle} className={`${dpadCls} rounded-r-lg`}>▶</button>
           <div />
-          <button {...press("DOWN")} className={`${dpadCls} rounded-b-lg`}>▼</button>
+          <button {...press("DOWN")} style={dpadBtnStyle} className={`${dpadCls} rounded-b-lg`}>▼</button>
           <div />
         </div>
 
         {/* Action buttons — bottom right */}
         <div className="pointer-events-auto absolute bottom-2 right-2 w-28 h-28 sm:w-32 sm:h-32">
-          <button {...press("B")} className={`${actionCls} absolute left-0 bottom-3`}>B</button>
-          <button {...press("A")} className={`${actionCls} absolute right-0 top-3`}>A</button>
+          <button {...press("B")} style={dpadBtnStyle} className={`${actionCls} absolute left-0 bottom-3`}>B</button>
+          <button {...press("A")} style={dpadBtnStyle} className={`${actionCls} absolute right-0 top-3`}>A</button>
         </div>
 
         {/* Shoulders — top corners */}
@@ -144,8 +144,8 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
 
         {/* Start / Select — bottom center */}
         <div className="pointer-events-auto absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-          <button {...press("SELECT")} className={sysCls}>SELECT</button>
-          <button {...press("START")} className={sysCls}>START</button>
+          <button {...press("SELECT")} style={dpadBtnStyle} className={sysCls}>SELECT</button>
+          <button {...press("START")} style={dpadBtnStyle} className={sysCls}>START</button>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
   return (
     <div
       className="lg:hidden glass border-t border-border/40 px-3 sm:px-4 pt-3 sm:pt-4 select-none"
-      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))", ...opacityStyle }}
+      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))", ...opacityStyle, ...themedBgStyle }}
     >
       {showShoulders && (
         <div className="flex justify-between max-w-md mx-auto mb-3">
@@ -167,26 +167,26 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
         {/* D-Pad */}
         <div className="grid grid-cols-3 grid-rows-3 gap-0">
           <div />
-          <button {...press("UP")} className={`${dpadCls} rounded-t-lg`}>▲</button>
+          <button {...press("UP")} style={dpadBtnStyle} className={`${dpadCls} rounded-t-lg`}>▲</button>
           <div />
-          <button {...press("LEFT")} className={`${dpadCls} rounded-l-lg`}>◀</button>
-          <div className={dpadCenterCls} />
-          <button {...press("RIGHT")} className={`${dpadCls} rounded-r-lg`}>▶</button>
+          <button {...press("LEFT")} style={dpadBtnStyle} className={`${dpadCls} rounded-l-lg`}>◀</button>
+          <div style={dpadBtnStyle} className={dpadCenterCls} />
+          <button {...press("RIGHT")} style={dpadBtnStyle} className={`${dpadCls} rounded-r-lg`}>▶</button>
           <div />
-          <button {...press("DOWN")} className={`${dpadCls} rounded-b-lg`}>▼</button>
+          <button {...press("DOWN")} style={dpadBtnStyle} className={`${dpadCls} rounded-b-lg`}>▼</button>
           <div />
         </div>
 
         {/* Center: select / start */}
         <div className="flex flex-col gap-2">
-          <button {...press("SELECT")} className={sysCls}>SELECT</button>
-          <button {...press("START")} className={sysCls}>START</button>
+          <button {...press("SELECT")} style={dpadBtnStyle} className={sysCls}>SELECT</button>
+          <button {...press("START")} style={dpadBtnStyle} className={sysCls}>START</button>
         </div>
 
         {/* Action buttons */}
         <div className="relative w-28 h-28 sm:w-32 sm:h-32">
-          <button {...press("B")} className={`${actionCls} absolute left-0 bottom-3 sm:bottom-4`}>B</button>
-          <button {...press("A")} className={`${actionCls} absolute right-0 top-3 sm:top-4`}>A</button>
+          <button {...press("B")} style={dpadBtnStyle} className={`${actionCls} absolute left-0 bottom-3 sm:bottom-4`}>B</button>
+          <button {...press("A")} style={dpadBtnStyle} className={`${actionCls} absolute right-0 top-3 sm:top-4`}>A</button>
         </div>
       </div>
     </div>
