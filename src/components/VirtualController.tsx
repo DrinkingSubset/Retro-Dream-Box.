@@ -78,6 +78,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
           paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
           paddingRight: "max(0.5rem, env(safe-area-inset-right))",
           paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+          ...opacityStyle,
         }}
       >
         {/* D-Pad — bottom left */}
@@ -119,7 +120,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
   return (
     <div
       className="lg:hidden glass border-t border-border/40 px-3 sm:px-4 pt-3 sm:pt-4 select-none"
-      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))", ...opacityStyle }}
     >
       {showShoulders && (
         <div className="flex justify-between max-w-md mx-auto mb-3">
