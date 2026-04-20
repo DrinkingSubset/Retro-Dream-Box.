@@ -36,6 +36,7 @@ declare global {
     EJS_volume?: number;
     EJS_disableDatabases?: boolean;
     EJS_defaultOptions?: Record<string, string | number | boolean>;
+    EJS_startButtonName?: string;
   }
 }
 
@@ -126,6 +127,8 @@ export default function Play() {
     // Delta skin overlay). Audio context unlocks on the first controller
     // tap, which is fine for retro-emulation use cases.
     window.EJS_startOnLoaded = true;
+    // Disable EJS's IndexedDB cache UI; we manage saves ourselves.
+    window.EJS_disableDatabases = true;
     window.EJS_gameName = game.name;
     window.EJS_gameID = game.id;
     window.EJS_color = "#a855f7";
@@ -167,7 +170,22 @@ export default function Play() {
     document.body.appendChild(script);
     scriptRef.current = script;
 
+    // Belt-and-braces: if the autoplay heuristic causes EJS to still render
+    // its "Start Game" overlay, click it for the user. The original tap on
+    // the ROM tile counts as a user gesture, so this is allowed.
+    const autoStartInterval = window.setInterval(() => {
+      const btn = container.querySelector<HTMLElement>(
+        ".ejs_start_button, [class*='start_button'], .ejs_startgame_button",
+      );
+      if (btn) {
+        btn.click();
+        window.clearInterval(autoStartInterval);
+      }
+    }, 150);
+    window.setTimeout(() => window.clearInterval(autoStartInterval), 15000);
+
     return () => {
+      window.clearInterval(autoStartInterval);
       try {
         window.EJS_emulator?.callEvent?.("exit");
       } catch {
