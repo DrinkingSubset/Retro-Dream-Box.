@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Delta-inspired emulator design system. All colors HSL. */
+/* Retro Play emulator design system. All colors HSL. */
 
 @layer base {
   :root {
@@ -18,7 +18,7 @@
     --popover: 258 45% 9%;
     --popover-foreground: 270 20% 96%;
 
-    /* Delta signature purple */
+    /* Signature purple */
     --primary: 268 85% 63%;
     --primary-foreground: 270 20% 98%;
     --primary-glow: 280 90% 70%;

@@ -171,7 +171,7 @@ export default function Settings() {
         <Section title="About">
           <Row
             icon={<Smartphone className="w-4 h-4" />}
-            label="Delta Web"
+            label="Retro Play"
             description="Version 1.0 · Local-first · Powered by EmulatorJS"
           >
             <span />
