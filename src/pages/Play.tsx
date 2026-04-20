@@ -5,8 +5,10 @@ import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord } from "@/lib/gameS
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
+import PlayMenu, { applyCheatsToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
 import { useSettings } from "@/lib/settingsStore";
+import { getCheats } from "@/lib/cheatStore";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
@@ -64,6 +66,8 @@ export default function Play() {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
+  const [holdMode, setHoldMode] = useState(false);
+  const heldRef = useRef<Set<string>>(new Set());
   const blobUrlRef = useRef<string | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -159,7 +163,11 @@ export default function Play() {
     };
     window.EJS_VirtualGamepadSettings = [];
     window.EJS_ready = () => setReady(true);
-    window.EJS_onGameStart = () => setStarted(true);
+    window.EJS_onGameStart = () => {
+      setStarted(true);
+      // Apply any saved cheats once the core is fully running.
+      if (id) getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
+    };
 
     // Fresh loader script every boot — EmulatorJS guards against double-init
     // internally but we want clean ordering after navigations.
@@ -211,32 +219,54 @@ export default function Play() {
   }, [game]);
 
   // Map virtual controller -> EmulatorJS (libretro joypad indices)
-  const sendInput = (button: string, pressed: boolean) => {
+  const sendInput = useCallback((button: string, pressed: boolean) => {
     const emu = window.EJS_emulator;
     const sim = emu?.gameManager?.simulateInput;
     if (!sim) return;
     const map: Record<string, number> = {
-      B: 0,
-      Y: 1,
-      SELECT: 2,
-      START: 3,
-      UP: 4,
-      DOWN: 5,
-      LEFT: 6,
-      RIGHT: 7,
-      A: 8,
-      X: 9,
-      L: 10,
-      R: 11,
+      B: 0, Y: 1, SELECT: 2, START: 3,
+      UP: 4, DOWN: 5, LEFT: 6, RIGHT: 7,
+      A: 8, X: 9, L: 10, R: 11,
     };
     const idx = map[button];
     if (idx === undefined) return;
+
+    // Hold-button mode: a press toggles a latched state. We only act on the
+    // press edge (pressed === true) and ignore the release. Pressing the
+    // same button again releases it.
+    if (holdMode) {
+      if (!pressed) return;
+      const held = heldRef.current;
+      const isHeld = held.has(button);
+      try {
+        emu.gameManager.simulateInput(0, idx, isHeld ? 0 : 1);
+      } catch { /* ignore */ }
+      if (isHeld) held.delete(button);
+      else held.add(button);
+      return;
+    }
+
     try {
       emu.gameManager.simulateInput(0, idx, pressed ? 1 : 0);
     } catch {
       // ignore
     }
-  };
+  }, [holdMode]);
+
+  // When leaving hold mode, release everything currently latched.
+  useEffect(() => {
+    if (holdMode) return;
+    const emu = window.EJS_emulator;
+    const map: Record<string, number> = {
+      B: 0, Y: 1, SELECT: 2, START: 3,
+      UP: 4, DOWN: 5, LEFT: 6, RIGHT: 7,
+      A: 8, X: 9, L: 10, R: 11,
+    };
+    for (const b of heldRef.current) {
+      try { emu?.gameManager?.simulateInput?.(0, map[b], 0); } catch { /* ignore */ }
+    }
+    heldRef.current.clear();
+  }, [holdMode]);
 
   if (error) {
     return (
@@ -264,6 +294,8 @@ export default function Play() {
       sendInput={sendInput}
       onBack={() => navigate("/")}
       containerRef={containerRef}
+      holdMode={holdMode}
+      onToggleHoldMode={() => setHoldMode((v) => !v)}
     />
   );
 }
@@ -275,17 +307,11 @@ interface PlayLayoutProps {
   sendInput: (button: string, pressed: boolean) => void;
   onBack: () => void;
   containerRef: React.MutableRefObject<HTMLDivElement | null>;
+  holdMode: boolean;
+  onToggleHoldMode: () => void;
 }
 
-/**
- * Renders the play screen. When a Delta-format skin exists for the current
- * system, the controller fills the viewport and the EmulatorJS canvas is
- * positioned (fixed) inside the screen-slot rect that the skin reports.
- *
- * When no Delta skin is available we fall back to the original layout:
- * game stage on top, generic VirtualController below.
- */
-function PlayLayout({ game, ready, started, sendInput, onBack, containerRef }: PlayLayoutProps) {
+function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode }: PlayLayoutProps) {
   const settings = useSettings();
   const player = settings.players[1];
   const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant) : null;
@@ -418,6 +444,11 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef }: P
       <div className="hidden lg:block text-center text-xs text-muted-foreground pb-3 px-4">
         Keyboard: Arrow keys · Z = B · X = A · A = Y · S = X · Q/W = L/R · Enter = Start · Shift = Select
       </div>
+
+      {/* Floating bottom-left menu — save state, cheats, fast forward, etc. */}
+      {game && started && (
+        <PlayMenu gameId={game.id} holdMode={holdMode} onToggleHoldMode={onToggleHoldMode} />
+      )}
     </div>
   );
 }
