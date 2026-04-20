@@ -36,6 +36,7 @@ declare global {
     EJS_volume?: number;
     EJS_disableDatabases?: boolean;
     EJS_defaultOptions?: Record<string, string | number | boolean>;
+    EJS_startButtonName?: string;
   }
 }
 
@@ -126,6 +127,8 @@ export default function Play() {
     // Delta skin overlay). Audio context unlocks on the first controller
     // tap, which is fine for retro-emulation use cases.
     window.EJS_startOnLoaded = true;
+    // Disable EJS's IndexedDB cache UI; we manage saves ourselves.
+    window.EJS_disableDatabases = true;
     window.EJS_gameName = game.name;
     window.EJS_gameID = game.id;
     window.EJS_color = "#a855f7";
