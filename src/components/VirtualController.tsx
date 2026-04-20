@@ -1,6 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { SystemId } from "@/lib/gameStore";
-import { useSettings, triggerHaptic } from "@/lib/settingsStore";
+import { useSettings, triggerHaptic, GBC_VARIANTS } from "@/lib/settingsStore";
 
 interface Props {
   system: SystemId;
@@ -23,10 +23,23 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
   const settings = useSettings();
   const player = settings.players[1];
   const scale = Math.max(0.5, Math.min(1.5, player.scale / 100));
+
+  // GBC color theming — only applied when actively playing a GBC game so the
+  // user's chosen skin variant translates into actual button styling.
+  const gbcTheme = useMemo(() => {
+    if (system !== "gbc") return null;
+    return GBC_VARIANTS.find((v) => v.id === player.gbcVariant) ?? GBC_VARIANTS[0];
+  }, [system, player.gbcVariant]);
+
   const opacityStyle = {
     opacity: Math.max(0.05, player.opacity / 100),
     transform: `scale(${scale})`,
     transformOrigin: variant === "bottom" ? "bottom center" : "center",
+    ...(gbcTheme && {
+      ["--ctrl-body" as string]: gbcTheme.body,
+      ["--ctrl-button" as string]: gbcTheme.button,
+      ["--ctrl-accent" as string]: gbcTheme.accent,
+    }),
   } as React.CSSProperties;
   const showShoulders = system === "gba";
 
@@ -59,19 +72,35 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
     [onInput, settings],
   );
 
-  const dpadCls =
-    "w-11 h-11 sm:w-12 sm:h-12 bg-secondary/90 border border-border/60 active:bg-primary active:border-primary text-foreground active:text-primary-foreground transition-colors no-select flex items-center justify-center font-bold";
+  // GBC theming overrides background/border via inline-style CSS vars.
+  // Default skin keeps the existing semantic-token classes.
+  const dpadCls = gbcTheme
+    ? "w-11 h-11 sm:w-12 sm:h-12 border text-white/95 active:opacity-80 transition-opacity no-select flex items-center justify-center font-bold"
+    : "w-11 h-11 sm:w-12 sm:h-12 bg-secondary/90 border border-border/60 active:bg-primary active:border-primary text-foreground active:text-primary-foreground transition-colors no-select flex items-center justify-center font-bold";
 
-  const dpadCenterCls = "w-11 h-11 sm:w-12 sm:h-12 bg-secondary/90 border border-border/60";
+  const dpadBtnStyle: React.CSSProperties | undefined = gbcTheme
+    ? { background: "var(--ctrl-button)", borderColor: "var(--ctrl-accent)" }
+    : undefined;
 
-  const actionCls =
-    "w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-primary text-primary-foreground font-display font-bold text-base sm:text-lg shadow-glow active:scale-90 transition-transform no-select flex items-center justify-center";
+  const dpadCenterCls = gbcTheme
+    ? "w-11 h-11 sm:w-12 sm:h-12 border"
+    : "w-11 h-11 sm:w-12 sm:h-12 bg-secondary/90 border border-border/60";
 
-  const sysCls =
-    "px-3 sm:px-4 h-8 sm:h-9 rounded-full bg-secondary/80 border border-border/60 text-foreground/80 text-[10px] sm:text-xs font-display font-semibold tracking-wider active:bg-primary active:text-primary-foreground transition-colors no-select";
+  const actionCls = gbcTheme
+    ? "w-12 h-12 sm:w-14 sm:h-14 rounded-full text-white/95 font-display font-bold text-base sm:text-lg shadow-card active:scale-90 transition-transform no-select flex items-center justify-center border-2"
+    : "w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-primary text-primary-foreground font-display font-bold text-base sm:text-lg shadow-glow active:scale-90 transition-transform no-select flex items-center justify-center";
+
+  const sysCls = gbcTheme
+    ? "px-3 sm:px-4 h-8 sm:h-9 rounded-full border text-white/90 text-[10px] sm:text-xs font-display font-semibold tracking-wider active:opacity-80 transition-opacity no-select"
+    : "px-3 sm:px-4 h-8 sm:h-9 rounded-full bg-secondary/80 border border-border/60 text-foreground/80 text-[10px] sm:text-xs font-display font-semibold tracking-wider active:bg-primary active:text-primary-foreground transition-colors no-select";
 
   const shoulderCls =
     "px-4 sm:px-5 h-8 sm:h-9 rounded-xl bg-secondary/80 border border-border/60 text-foreground/80 text-[10px] sm:text-xs font-display font-semibold active:bg-primary active:text-primary-foreground transition-colors no-select";
+
+  // Container background tinted to the GBC body color.
+  const themedBgStyle: React.CSSProperties | undefined = gbcTheme
+    ? { background: `linear-gradient(180deg, ${gbcTheme.body}cc, ${gbcTheme.accent}e6)` }
+    : undefined;
 
   // Compact side layout — used in short landscape viewports.
   // The pad floats over the gameplay edges so the screen stays as large as possible.
