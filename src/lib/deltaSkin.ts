@@ -145,33 +145,44 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
   if (existing) return existing;
 
   const promise = (async (): Promise<ParsedSkin> => {
-    // Try IndexedDB cache first — avoids refetching the .deltaskin and
-    // re-rasterising both PDFs.
+    type StrippedRep = Omit<RenderedRepresentation, "imageDataUrl" | "imageWidth" | "imageHeight">;
+    type CachedMeta = {
+      v: number;
+      name: string;
+      identifier: string;
+      portrait: StrippedRep;
+      landscape: StrippedRep;
+      portraitEdge?: StrippedRep;
+      landscapeEdge?: StrippedRep;
+    };
+
+    // Try IndexedDB cache first.
     try {
-      const [cPortrait, cLandscape, cMeta] = await Promise.all([
+      const [cP, cL, cPE, cLE, cMeta] = await Promise.all([
         idbGet<CachedRep>(`${url}::portrait`, skinStore),
         idbGet<CachedRep>(`${url}::landscape`, skinStore),
-        idbGet<{
-          name: string;
-          identifier: string;
-          portrait: Omit<RenderedRepresentation, "imageDataUrl" | "imageWidth" | "imageHeight">;
-          landscape: Omit<RenderedRepresentation, "imageDataUrl" | "imageWidth" | "imageHeight">;
-        }>(`${url}::meta`, skinStore),
+        idbGet<CachedRep>(`${url}::portraitEdge`, skinStore),
+        idbGet<CachedRep>(`${url}::landscapeEdge`, skinStore),
+        idbGet<CachedMeta>(`${url}::meta`, skinStore),
       ]);
-      if (
-        cPortrait?.v === SKIN_CACHE_VERSION &&
-        cLandscape?.v === SKIN_CACHE_VERSION &&
-        cMeta
-      ) {
+      if (cMeta?.v === SKIN_CACHE_VERSION && cP?.v === SKIN_CACHE_VERSION && cL?.v === SKIN_CACHE_VERSION) {
+        const hydrate = (s: StrippedRep, c: CachedRep): RenderedRepresentation => ({
+          ...s,
+          imageDataUrl: c.imageDataUrl,
+          imageWidth: c.imageWidth,
+          imageHeight: c.imageHeight,
+        });
         return {
           name: cMeta.name,
           identifier: cMeta.identifier,
-          portrait: { ...cMeta.portrait, imageDataUrl: cPortrait.imageDataUrl, imageWidth: cPortrait.imageWidth, imageHeight: cPortrait.imageHeight },
-          landscape: { ...cMeta.landscape, imageDataUrl: cLandscape.imageDataUrl, imageWidth: cLandscape.imageWidth, imageHeight: cLandscape.imageHeight },
+          portrait: hydrate(cMeta.portrait, cP),
+          landscape: hydrate(cMeta.landscape, cL),
+          portraitEdge: cMeta.portraitEdge && cPE?.v === SKIN_CACHE_VERSION ? hydrate(cMeta.portraitEdge, cPE) : undefined,
+          landscapeEdge: cMeta.landscapeEdge && cLE?.v === SKIN_CACHE_VERSION ? hydrate(cMeta.landscapeEdge, cLE) : undefined,
         };
       }
     } catch {
-      // IndexedDB unavailable (private mode, etc.) — fall through to network.
+      // IndexedDB unavailable — fall through to network.
     }
 
     const res = await fetch(url);
@@ -183,8 +194,9 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
     if (!infoFile) throw new Error("Skin is missing info.json");
     const info = JSON.parse(await infoFile.async("string"));
 
-    const reps = info?.representations?.iphone?.standard;
-    if (!reps?.portrait || !reps?.landscape) {
+    const std = info?.representations?.iphone?.standard;
+    const e2e = info?.representations?.iphone?.edgeToEdge;
+    if (!std?.portrait || !std?.landscape) {
       throw new Error("Skin missing iphone/standard representations");
     }
 
@@ -207,9 +219,11 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
       };
     }
 
-    const [portrait, landscape] = await Promise.all([
-      renderRep(reps.portrait),
-      renderRep(reps.landscape),
+    const [portrait, landscape, portraitEdge, landscapeEdge] = await Promise.all([
+      renderRep(std.portrait),
+      renderRep(std.landscape),
+      e2e?.portrait ? renderRep(e2e.portrait) : Promise.resolve(undefined),
+      e2e?.landscape ? renderRep(e2e.landscape) : Promise.resolve(undefined),
     ]);
 
     const result: ParsedSkin = {
@@ -217,40 +231,45 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
       identifier: info.identifier ?? url,
       portrait,
       landscape,
+      portraitEdge: portraitEdge as RenderedRepresentation | undefined,
+      landscapeEdge: landscapeEdge as RenderedRepresentation | undefined,
     };
 
-    // Persist rendered PNGs + layout metadata to IndexedDB. Fire-and-forget;
-    // failures are non-fatal (quota exceeded, private mode, etc.).
-    const stripImage = (r: RenderedRepresentation) => {
+    // Persist rendered PNGs + layout metadata. Fire-and-forget.
+    const stripImage = (r: RenderedRepresentation): StrippedRep => {
       const { imageDataUrl: _i, imageWidth: _w, imageHeight: _h, ...rest } = r;
+      void _i; void _w; void _h;
       return rest;
     };
-    Promise.all([
-      idbSet(`${url}::portrait`, {
+    const setRep = (key: string, r: RenderedRepresentation) =>
+      idbSet(key, {
         v: SKIN_CACHE_VERSION,
-        imageDataUrl: portrait.imageDataUrl,
-        imageWidth: portrait.imageWidth,
-        imageHeight: portrait.imageHeight,
-      }, skinStore),
-      idbSet(`${url}::landscape`, {
-        v: SKIN_CACHE_VERSION,
-        imageDataUrl: landscape.imageDataUrl,
-        imageWidth: landscape.imageWidth,
-        imageHeight: landscape.imageHeight,
-      }, skinStore),
+        imageDataUrl: r.imageDataUrl,
+        imageWidth: r.imageWidth,
+        imageHeight: r.imageHeight,
+      }, skinStore);
+
+    const writes: Promise<unknown>[] = [
+      setRep(`${url}::portrait`, portrait),
+      setRep(`${url}::landscape`, landscape),
       idbSet(`${url}::meta`, {
+        v: SKIN_CACHE_VERSION,
         name: result.name,
         identifier: result.identifier,
         portrait: stripImage(portrait),
         landscape: stripImage(landscape),
-      }, skinStore),
-    ]).catch(() => { /* non-fatal */ });
+        portraitEdge: result.portraitEdge ? stripImage(result.portraitEdge) : undefined,
+        landscapeEdge: result.landscapeEdge ? stripImage(result.landscapeEdge) : undefined,
+      } satisfies CachedMeta, skinStore),
+    ];
+    if (result.portraitEdge) writes.push(setRep(`${url}::portraitEdge`, result.portraitEdge));
+    if (result.landscapeEdge) writes.push(setRep(`${url}::landscapeEdge`, result.landscapeEdge));
+    Promise.all(writes).catch(() => { /* non-fatal */ });
 
     return result;
   })();
 
   cache.set(url, promise);
-  // Drop failed loads from cache so a refresh can retry.
   promise.catch(() => cache.delete(url));
   return promise;
 }
