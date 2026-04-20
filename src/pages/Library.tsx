@@ -62,30 +62,30 @@ export default function Library() {
         <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary/30 blur-3xl animate-pulse-glow" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/20 blur-3xl" />
 
-        <div className="container relative z-10 py-12 md:py-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow">
-              <Gamepad2 className="w-6 h-6 text-primary-foreground" />
+        <div className="container relative z-10 py-10 sm:py-12 md:py-16">
+          <div className="flex items-center gap-3 mb-5 sm:mb-6">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow shrink-0">
+              <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
-            <div>
-              <p className="text-xs font-display font-semibold tracking-[0.25em] text-primary-glow uppercase">Delta</p>
-              <h1 className="font-display text-2xl md:text-3xl font-bold leading-none">Your Library</h1>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-display font-semibold tracking-[0.25em] text-primary-glow uppercase">Delta</p>
+              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold leading-none">Your Library</h1>
             </div>
           </div>
 
-          <div className="max-w-2xl mb-8 animate-fade-up">
-            <h2 className="font-display text-4xl md:text-6xl font-bold leading-[1.05] mb-4">
+          <div className="max-w-2xl mb-6 sm:mb-8 animate-fade-up">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold leading-[1.05] mb-3 sm:mb-4 text-balance">
               Every classic.<br />
               <span className="text-gradient">In your browser.</span>
             </h2>
-            <p className="text-muted-foreground md:text-lg">
+            <p className="text-sm sm:text-base text-muted-foreground md:text-lg">
               GBA, GBC, and NES — powered by EmulatorJS. Upload your ROMs once, play instantly. Saves stay on your device.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <UploadRomButton onAdded={() => refresh()} />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground glass rounded-full px-4 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground glass rounded-full px-3 sm:px-4 py-2 sm:py-2.5">
               <Sparkles className="w-3.5 h-3.5 text-primary-glow" />
               {games.length} game{games.length === 1 ? "" : "s"} in library
             </div>
@@ -129,9 +129,9 @@ export default function Library() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content — extra column at md (Z Fold unfolded ~968px) */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-5">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="aspect-[3/4] rounded-3xl bg-card/60 animate-pulse" />
             ))}
@@ -139,7 +139,7 @@ export default function Library() {
         ) : filtered.length === 0 ? (
           <EmptyState hasGames={games.length > 0} filter={filter} onAdded={() => refresh()} />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-5">
             {filtered.map((g, i) => (
               <GameCard
                 key={g.id}

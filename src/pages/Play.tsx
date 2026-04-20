@@ -207,24 +207,30 @@ export default function Play() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Top bar */}
-      <header className="glass border-b border-border/40 px-4 py-3 flex items-center justify-between gap-3 sticky top-0 z-30">
+    <div className="min-h-dscreen flex flex-col bg-background">
+      {/* Top bar — collapses on short landscape (Z Fold folded landscape, etc.) */}
+      <header
+        className="glass border-b border-border/40 px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 [@media(max-height:480px)_and_(orientation:landscape)]:py-1.5"
+        style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
+      >
         <button
           onClick={() => navigate("/")}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-secondary/60 hover:bg-secondary text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-secondary/60 hover:bg-secondary text-sm font-medium transition-colors shrink-0"
+          aria-label="Back to library"
         >
           <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Library</span>
         </button>
         <div className="flex-1 min-w-0 text-center">
-          <h1 className="font-display font-semibold truncate">{game?.name ?? "Loading…"}</h1>
+          <h1 className="font-display font-semibold truncate text-sm sm:text-base">{game?.name ?? "Loading…"}</h1>
         </div>
         {game && <SystemBadge system={game.system} size="sm" />}
       </header>
 
-      {/* Game stage */}
-      <div className="flex-1 flex items-center justify-center p-2 md:p-6 bg-black/50">
-        <div className="relative w-full max-w-5xl aspect-[4/3] rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black">
+      {/* Game stage. On short landscape (folded foldables), the stage fills the
+          remaining viewport and controls float over its corners so the screen
+          stays as large as possible. */}
+      <div className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-6 bg-black/50 min-h-0 relative">
+        <div className="relative w-full h-full max-w-5xl max-h-full aspect-[4/3] mx-auto rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black [@media(max-height:480px)_and_(orientation:landscape)]:rounded-lg">
           <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" />
           {!ready && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none">
@@ -239,14 +245,25 @@ export default function Play() {
               </div>
             </div>
           )}
+
+          {/* Floating side controls — only visible on short landscape viewports */}
+          {game && started && (
+            <div className="hidden [@media(max-height:480px)_and_(orientation:landscape)]:block">
+              <VirtualController system={game.system} onInput={sendInput} variant="sides" />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Virtual controls (mobile/tablet) — only useful once the game is running */}
-      {game && started && <VirtualController system={game.system} onInput={sendInput} />}
+      {/* Stacked controls — hidden on short landscape (handled above) and on lg+ */}
+      {game && started && (
+        <div className="[@media(max-height:480px)_and_(orientation:landscape)]:hidden">
+          <VirtualController system={game.system} onInput={sendInput} variant="bottom" />
+        </div>
+      )}
 
-      {/* Keyboard hint (desktop) */}
-      <div className="hidden lg:block text-center text-xs text-muted-foreground pb-3">
+      {/* Keyboard hint (desktop only) */}
+      <div className="hidden lg:block text-center text-xs text-muted-foreground pb-3 px-4">
         Keyboard: Arrow keys · Z = B · X = A · A = Y · S = X · Q/W = L/R · Enter = Start · Shift = Select
       </div>
     </div>
