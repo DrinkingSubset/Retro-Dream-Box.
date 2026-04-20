@@ -184,7 +184,10 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
     <div
       ref={containerRef}
       className="relative w-full h-full select-none no-select"
-      style={{ touchAction: "none" }}
+      // pointer-events-none on the wrapper — only individual hit regions
+      // re-enable them. This lets the EmulatorJS canvas receive clicks
+      // (including its initial "press to start" overlay) on the screen area.
+      style={{ touchAction: "none", pointerEvents: "none" }}
     >
       {/* Skin background — PDF artwork. */}
       <img
@@ -209,6 +212,9 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
           top: skinRect.top,
           width: skinRect.width,
           height: skinRect.height,
+          // pointer-events: none so empty space inside the skin still passes
+          // through clicks; HitRegion children re-enable on themselves.
+          pointerEvents: "none",
         }}
       >
         {rep.items.map((item, idx) => (
@@ -259,15 +265,13 @@ function HitRegion({ item, scale, onInput, onMenu, onPress }: HitRegionProps) {
         type="button"
         aria-label={inputs.join("+")}
         className="absolute bg-transparent active:bg-white/10 rounded-md transition-colors"
-        style={{ left, top, width, height }}
+        style={{ left, top, width, height, pointerEvents: "auto" }}
         {...handlers}
       />
     );
   }
 
   // ----- D-pad: subdivide into 4 zones (up/down/left/right). -----
-  // We track which zone is currently active per-pointer so dragging from
-  // up→left releases up and presses left, just like a real pad.
   if (isDpad) {
     return <DpadRegion left={left} top={top} width={width} height={height} onInput={onInput} onPress={onPress} />;
   }
@@ -363,7 +367,7 @@ function DpadRegion({
   return (
     <div
       className="absolute"
-      style={{ left, top, width, height }}
+      style={{ left, top, width, height, pointerEvents: "auto", touchAction: "none" }}
       onPointerDown={(e) => {
         e.preventDefault();
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);

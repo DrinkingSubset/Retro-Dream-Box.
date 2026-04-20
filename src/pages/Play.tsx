@@ -121,9 +121,11 @@ export default function Play() {
     window.EJS_gameUrl = gameUrl;
     window.EJS_core = CORE_MAP[game.system];
     window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
-    // Let EmulatorJS show its own "Play" overlay so audio context unlocks on
-    // user gesture. Auto-starting often fails silently on mobile Safari.
-    window.EJS_startOnLoaded = false;
+    // Auto-start the game so the user doesn't need to find/click EJS's
+    // built-in "press to start" overlay (which can be hidden behind the
+    // Delta skin overlay). Audio context unlocks on the first controller
+    // tap, which is fine for retro-emulation use cases.
+    window.EJS_startOnLoaded = true;
     window.EJS_gameName = game.name;
     window.EJS_gameID = game.id;
     window.EJS_color = "#a855f7";
@@ -344,16 +346,18 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef }: P
             </div>
           )}
 
-          {/* Skin overlay — fills the play area beneath the header. */}
-          <div className="absolute inset-0 z-10 pointer-events-none">
-            <div className="w-full h-full pointer-events-auto">
-              <DeltaSkinController
-                skinUrl={skinUrl}
-                orientation={orientation}
-                onInput={sendInput}
-                onScreenRect={handleScreenRect}
-              />
-            </div>
+          {/* Skin overlay — fills the play area beneath the header. The
+              skin itself uses pointer-events:none on its wrapper and only
+              re-enables them on actual hit regions, so the EJS canvas
+              underneath still receives clicks (e.g. its "press to start"
+              overlay). */}
+          <div className="absolute inset-0 z-10">
+            <DeltaSkinController
+              skinUrl={skinUrl}
+              orientation={orientation}
+              onInput={sendInput}
+              onScreenRect={handleScreenRect}
+            />
           </div>
         </div>
       ) : (
