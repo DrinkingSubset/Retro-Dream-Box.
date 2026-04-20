@@ -1,0 +1,399 @@
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { loadDeltaSkin, expandInputs, type ParsedSkin, type RenderedRepresentation, type SkinItem } from "@/lib/deltaSkin";
+import { useSettings, triggerHaptic } from "@/lib/settingsStore";
+
+/**
+ * Maps Delta input names → the canonical button strings that Play.tsx
+ * understands and forwards to EmulatorJS.
+ */
+const INPUT_MAP: Record<string, string> = {
+  up: "UP", down: "DOWN", left: "LEFT", right: "RIGHT",
+  a: "A", b: "B", x: "X", y: "Y",
+  l: "L", r: "R", l2: "L2", r2: "R2",
+  start: "START", select: "SELECT",
+};
+
+interface Props {
+  /** URL of the .deltaskin file in /public/skins. */
+  skinUrl: string;
+  /** Orientation to render. */
+  orientation: "portrait" | "landscape";
+  /**
+   * Called when an input is pressed/released. The button string matches the
+   * one used by VirtualController so Play.tsx's existing wiring works.
+   */
+  onInput: (button: string, pressed: boolean) => void;
+  /**
+   * Called whenever the screen-slot rect changes (resize / orientation).
+   * Play.tsx uses this to position the EmulatorJS container exactly inside
+   * the slot — viewport coordinates.
+   */
+  onScreenRect?: (rect: { left: number; top: number; width: number; height: number } | null) => void;
+  /** Tap "menu" to open this callback (e.g. emulator pause). */
+  onMenu?: () => void;
+}
+
+/**
+ * Renders a Delta-format skin pixel-faithfully:
+ *   - PDF artwork as the controller background image
+ *   - Invisible <button>s positioned over each `info.json` hit region,
+ *     scaled from `mappingSize` coordinates to actual screen pixels.
+ *
+ * Portrait: vertical stack — game screen on top, skin below.
+ * Landscape: skin overlay floats over the game screen (filling all space).
+ */
+export default function DeltaSkinController({
+  skinUrl,
+  orientation,
+  onInput,
+  onScreenRect,
+  onMenu,
+}: Props) {
+  const settings = useSettings();
+  const player = settings.players[1];
+  const opacity = Math.max(0.05, player.opacity / 100);
+
+  const [skin, setSkin] = useState<ParsedSkin | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSkin(null);
+    setError(null);
+    loadDeltaSkin(skinUrl)
+      .then((s) => { if (!cancelled) setSkin(s); })
+      .catch((e) => { if (!cancelled) setError(e?.message ?? "Failed to load skin"); });
+    return () => { cancelled = true; };
+  }, [skinUrl]);
+
+  // When the skin fails to load or while loading, clear any reported
+  // screen rect so the EJS canvas can fall back to a default position.
+  useEffect(() => {
+    if (error || !skin) onScreenRect?.(null);
+  }, [error, skin, onScreenRect]);
+
+  if (error) {
+    return (
+      <div className="text-xs text-destructive p-2 text-center">
+        Skin failed to load: {error}
+      </div>
+    );
+  }
+
+  if (!skin) {
+    return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
+  }
+
+  const rep = orientation === "portrait" ? skin.portrait : skin.landscape;
+
+  return (
+    <SkinCanvas
+      rep={rep}
+      orientation={orientation}
+      onInput={onInput}
+      onScreenRect={onScreenRect}
+      onMenu={onMenu}
+      opacity={opacity}
+      onPress={() => triggerHaptic(settings)}
+    />
+  );
+}
+
+interface CanvasProps {
+  rep: RenderedRepresentation;
+  orientation: "portrait" | "landscape";
+  onInput: (button: string, pressed: boolean) => void;
+  onScreenRect?: (rect: { left: number; top: number; width: number; height: number } | null) => void;
+  onMenu?: () => void;
+  opacity: number;
+  onPress: () => void;
+}
+
+function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, onPress }: CanvasProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  /** [width, height] of the rendered skin area, in CSS pixels. */
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+
+  // Aspect ratio of the skin, derived from mappingSize (the logical layout).
+  const aspect = rep.mappingWidth / rep.mappingHeight;
+
+  // Observe container size so we can fit the skin into the available space
+  // while keeping its aspect ratio identical to the original info.json layout.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setSize({ w: r.width, h: r.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Compute the actual rendered skin rect inside the container — keeping
+  // the skin's aspect ratio so hit regions land precisely.
+  const skinRect = useMemo(() => {
+    if (!size.w || !size.h) return { left: 0, top: 0, width: 0, height: 0 };
+    const containerAspect = size.w / size.h;
+    let width: number, height: number;
+    if (containerAspect > aspect) {
+      height = size.h;
+      width = height * aspect;
+    } else {
+      width = size.w;
+      height = width / aspect;
+    }
+    return {
+      left: (size.w - width) / 2,
+      top: orientation === "portrait" ? size.h - height : (size.h - height) / 2,
+      width,
+      height,
+    };
+  }, [size, aspect, orientation]);
+
+  // Report the screen-slot rect (in viewport coordinates) to the parent so
+  // it can position the EmulatorJS canvas exactly inside it.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !onScreenRect || !size.w) return;
+    const c = el.getBoundingClientRect();
+    if (orientation === "portrait") {
+      // Screen sits in the area above the skin, full container width.
+      onScreenRect({
+        left: c.left,
+        top: c.top,
+        width: size.w,
+        height: skinRect.top,
+      });
+    } else {
+      // Screen fills the container; controls float on top.
+      onScreenRect({
+        left: c.left,
+        top: c.top,
+        width: size.w,
+        height: size.h,
+      });
+    }
+  }, [size, skinRect, orientation, onScreenRect]);
+
+  // Convert a logical mappingSize coordinate to a CSS pixel offset within
+  // the skin rect. This is the core of pixel-faithful hit-target mapping.
+  const scale = skinRect.width / rep.mappingWidth;
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-full select-none no-select"
+      style={{ touchAction: "none" }}
+    >
+      {/* Skin background — PDF artwork. */}
+      <img
+        src={rep.imageDataUrl}
+        alt=""
+        draggable={false}
+        className="absolute pointer-events-none"
+        style={{
+          left: skinRect.left,
+          top: skinRect.top,
+          width: skinRect.width,
+          height: skinRect.height,
+          opacity,
+        }}
+      />
+
+      {/* Hit regions — invisible buttons over each info.json item. */}
+      <div
+        className="absolute"
+        style={{
+          left: skinRect.left,
+          top: skinRect.top,
+          width: skinRect.width,
+          height: skinRect.height,
+        }}
+      >
+        {rep.items.map((item, idx) => (
+          <HitRegion
+            key={idx}
+            item={item}
+            scale={scale}
+            onInput={onInput}
+            onMenu={onMenu}
+            onPress={onPress}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ScreenSlot is no longer used — Play.tsx positions the EJS canvas directly
+// based on the rect reported via onScreenRect.
+
+interface HitRegionProps {
+  item: SkinItem;
+  scale: number;
+  onInput: (button: string, pressed: boolean) => void;
+  onMenu?: () => void;
+  onPress: () => void;
+}
+
+function HitRegion({ item, scale, onInput, onMenu, onPress }: HitRegionProps) {
+  const inputs = expandInputs(item);
+  const isDpad =
+    !Array.isArray(item.inputs) &&
+    "up" in item.inputs && "down" in item.inputs;
+  const isThumbstick = !!item.thumbstick;
+
+  // Extended edges expand the hit area outward (per Delta's design).
+  const ext = item.extendedEdges ?? {};
+  const left = (item.frame.x - (ext.left ?? 0)) * scale;
+  const top = (item.frame.y - (ext.top ?? 0)) * scale;
+  const width = (item.frame.width + (ext.left ?? 0) + (ext.right ?? 0)) * scale;
+  const height = (item.frame.height + (ext.top ?? 0) + (ext.bottom ?? 0)) * scale;
+
+  // ----- Single-input button (A, B, Start, etc.) -----
+  if (!isDpad && !isThumbstick && inputs.length >= 1) {
+    const handlers = makePressHandlers(inputs, onInput, onPress, onMenu);
+    return (
+      <button
+        type="button"
+        aria-label={inputs.join("+")}
+        className="absolute bg-transparent active:bg-white/10 rounded-md transition-colors"
+        style={{ left, top, width, height }}
+        {...handlers}
+      />
+    );
+  }
+
+  // ----- D-pad: subdivide into 4 zones (up/down/left/right). -----
+  // We track which zone is currently active per-pointer so dragging from
+  // up→left releases up and presses left, just like a real pad.
+  if (isDpad) {
+    return <DpadRegion left={left} top={top} width={width} height={height} onInput={onInput} onPress={onPress} />;
+  }
+
+  // ----- Thumbstick: treated as an analog-ish 8-way pad. -----
+  if (isThumbstick) {
+    return <ThumbstickRegion left={left} top={top} width={width} height={height} onInput={onInput} onPress={onPress} />;
+  }
+
+  return null;
+}
+
+function makePressHandlers(
+  inputs: string[],
+  onInput: (b: string, p: boolean) => void,
+  onPress: () => void,
+  onMenu?: () => void,
+) {
+  const buttons = inputs
+    .map((i) => (i === "menu" ? "MENU" : INPUT_MAP[i]))
+    .filter((b): b is string => !!b);
+
+  const press = (down: boolean) => {
+    for (const b of buttons) {
+      if (b === "MENU") {
+        if (down) onMenu?.();
+      } else {
+        onInput(b, down);
+      }
+    }
+  };
+
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      onPress();
+      press(true);
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      e.preventDefault();
+      press(false);
+    },
+    onPointerCancel: () => press(false),
+    onPointerLeave: (e: React.PointerEvent) => {
+      // Only release if pointer was actually captured/down.
+      if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) {
+        press(false);
+      }
+    },
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+  };
+}
+
+/**
+ * D-pad with diagonal-aware zones — touching the up-left corner fires both
+ * UP and LEFT, matching Delta's behaviour.
+ */
+function DpadRegion({
+  left, top, width, height, onInput, onPress,
+}: {
+  left: number; top: number; width: number; height: number;
+  onInput: (b: string, p: boolean) => void;
+  onPress: () => void;
+}) {
+  const activeRef = useRef<Set<string>>(new Set());
+
+  const updateFromPointer = useCallback((clientX: number, clientY: number, rect: DOMRect) => {
+    const dx = clientX - rect.left - rect.width / 2;
+    const dy = clientY - rect.top - rect.height / 2;
+    // Dead zone ~10% of the pad radius
+    const deadzone = Math.min(rect.width, rect.height) * 0.1;
+    const next = new Set<string>();
+    if (Math.abs(dy) > deadzone) next.add(dy < 0 ? "UP" : "DOWN");
+    if (Math.abs(dx) > deadzone) next.add(dx < 0 ? "LEFT" : "RIGHT");
+
+    // Release any that were active but aren't now
+    for (const b of activeRef.current) {
+      if (!next.has(b)) onInput(b, false);
+    }
+    // Press any newly active
+    for (const b of next) {
+      if (!activeRef.current.has(b)) onInput(b, true);
+    }
+    activeRef.current = next;
+  }, [onInput]);
+
+  const releaseAll = useCallback(() => {
+    for (const b of activeRef.current) onInput(b, false);
+    activeRef.current = new Set();
+  }, [onInput]);
+
+  return (
+    <div
+      className="absolute"
+      style={{ left, top, width, height }}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        onPress();
+        const rect = e.currentTarget.getBoundingClientRect();
+        updateFromPointer(e.clientX, e.clientY, rect);
+      }}
+      onPointerMove={(e) => {
+        if (!(e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        updateFromPointer(e.clientX, e.clientY, rect);
+      }}
+      onPointerUp={(e) => {
+        e.preventDefault();
+        releaseAll();
+      }}
+      onPointerCancel={releaseAll}
+      onContextMenu={(e) => e.preventDefault()}
+    />
+  );
+}
+
+/**
+ * Thumbstick — same logic as D-pad but with a smaller deadzone and 8-way
+ * coverage (any vector outside the deadzone counts).
+ */
+function ThumbstickRegion(props: {
+  left: number; top: number; width: number; height: number;
+  onInput: (b: string, p: boolean) => void;
+  onPress: () => void;
+}) {
+  return <DpadRegion {...props} />;
+}

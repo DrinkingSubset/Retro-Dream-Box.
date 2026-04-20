@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord } from "@/lib/gameStore";
 import VirtualController from "@/components/VirtualController";
+import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
+import { getSkinUrlForSystem } from "@/lib/skinRegistry";
+import { useSettings } from "@/lib/settingsStore";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
@@ -234,6 +237,74 @@ export default function Play() {
   }
 
   return (
+    <PlayLayout
+      game={game}
+      ready={ready}
+      started={started}
+      sendInput={sendInput}
+      onBack={() => navigate("/")}
+      containerRef={containerRef}
+    />
+  );
+}
+
+interface PlayLayoutProps {
+  game: GameRecord | null;
+  ready: boolean;
+  started: boolean;
+  sendInput: (button: string, pressed: boolean) => void;
+  onBack: () => void;
+  containerRef: React.MutableRefObject<HTMLDivElement | null>;
+}
+
+/**
+ * Renders the play screen. When a Delta-format skin exists for the current
+ * system, the controller fills the viewport and the EmulatorJS canvas is
+ * positioned (fixed) inside the screen-slot rect that the skin reports.
+ *
+ * When no Delta skin is available we fall back to the original layout:
+ * game stage on top, generic VirtualController below.
+ */
+function PlayLayout({ game, ready, started, sendInput, onBack, containerRef }: PlayLayoutProps) {
+  const settings = useSettings();
+  const player = settings.players[1];
+  const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant) : null;
+
+  // Track viewport orientation so the skin controller knows which
+  // representation to render.
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">(
+    () => (typeof window !== "undefined" && window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait"),
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape)");
+    const handler = () => setOrientation(mq.matches ? "landscape" : "portrait");
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Screen-slot rect (viewport coordinates) reported by DeltaSkinController.
+  const [screenRect, setScreenRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const handleScreenRect = useCallback(
+    (rect: { left: number; top: number; width: number; height: number } | null) => {
+      setScreenRect(rect);
+    },
+    [],
+  );
+
+  // The EmulatorJS canvas is positioned absolutely. When a skin reports a
+  // rect we honour it; otherwise we centre in the legacy stage (below).
+  const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
+    ? {
+        position: "fixed",
+        left: screenRect.left,
+        top: screenRect.top,
+        width: screenRect.width,
+        height: screenRect.height,
+        zIndex: 5,
+      }
+    : undefined;
+
+  return (
     <div className="min-h-dscreen flex flex-col bg-background">
       {/* Top bar — collapses on short landscape (Z Fold folded landscape, etc.) */}
       <header
@@ -241,7 +312,7 @@ export default function Play() {
         style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
       >
         <button
-          onClick={() => navigate("/")}
+          onClick={onBack}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-secondary/60 hover:bg-secondary text-sm font-medium transition-colors shrink-0"
           aria-label="Back to library"
         >
@@ -253,40 +324,72 @@ export default function Play() {
         {game && <SystemBadge system={game.system} size="sm" />}
       </header>
 
-      {/* Game stage. On short landscape (folded foldables), the stage fills the
-          remaining viewport and controls float over its corners so the screen
-          stays as large as possible. */}
-      <div className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-6 bg-black/50 min-h-0 relative">
-        <div className="relative w-full h-full max-w-5xl max-h-full aspect-[4/3] mx-auto rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black [@media(max-height:480px)_and_(orientation:landscape)]:rounded-lg">
-          <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" />
+      {/* === Path A: Delta skin available — full-screen skin layout === */}
+      {skinUrl && game ? (
+        <div className="flex-1 relative bg-black min-h-0">
+          {/* The EJS canvas is positioned via canvasStyle (fixed). */}
+          <div
+            ref={containerRef}
+            id="emu-game"
+            className="bg-black"
+            style={canvasStyle ?? { position: "absolute", inset: 0 }}
+          />
+
           {!ready && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none z-20">
               <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              <div className="text-center px-6">
-                <p className="font-display font-semibold">
-                  Loading {game?.system && SYSTEM_LABELS[game.system]}…
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Downloading the emulator core (one-time, ~2&nbsp;MB)
-                </p>
-              </div>
+              <p className="font-display font-semibold">
+                Loading {game?.system && SYSTEM_LABELS[game.system]}…
+              </p>
             </div>
           )}
 
-          {/* Floating side controls — only visible on short landscape viewports */}
+          {/* Skin overlay — fills the play area beneath the header. */}
+          <div className="absolute inset-0 z-10 pointer-events-none">
+            <div className="w-full h-full pointer-events-auto">
+              <DeltaSkinController
+                skinUrl={skinUrl}
+                orientation={orientation}
+                onInput={sendInput}
+                onScreenRect={handleScreenRect}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* === Path B: legacy stacked layout (no Delta skin for this system) === */
+        <>
+          <div className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-6 bg-black/50 min-h-0 relative">
+            <div className="relative w-full h-full max-w-5xl max-h-full aspect-[4/3] mx-auto rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black [@media(max-height:480px)_and_(orientation:landscape)]:rounded-lg">
+              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" />
+              {!ready && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  <div className="text-center px-6">
+                    <p className="font-display font-semibold">
+                      Loading {game?.system && SYSTEM_LABELS[game.system]}…
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Downloading the emulator core (one-time, ~2&nbsp;MB)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {game && started && (
+                <div className="hidden [@media(max-height:480px)_and_(orientation:landscape)]:block">
+                  <VirtualController system={game.system} onInput={sendInput} variant="sides" />
+                </div>
+              )}
+            </div>
+          </div>
+
           {game && started && (
-            <div className="hidden [@media(max-height:480px)_and_(orientation:landscape)]:block">
-              <VirtualController system={game.system} onInput={sendInput} variant="sides" />
+            <div className="[@media(max-height:480px)_and_(orientation:landscape)]:hidden">
+              <VirtualController system={game.system} onInput={sendInput} variant="bottom" />
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Stacked controls — hidden on short landscape (handled above) and on lg+ */}
-      {game && started && (
-        <div className="[@media(max-height:480px)_and_(orientation:landscape)]:hidden">
-          <VirtualController system={game.system} onInput={sendInput} variant="bottom" />
-        </div>
+        </>
       )}
 
       {/* Keyboard hint (desktop only) */}
