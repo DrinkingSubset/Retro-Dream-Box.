@@ -78,10 +78,13 @@ export interface ParsedSkin {
   /** Display name from info.json. */
   name: string;
   identifier: string;
-  /** Portrait representation (with rendered background image). */
+  /** Standard (iPhone home-button) representation. */
   portrait: RenderedRepresentation;
-  /** Landscape representation (with rendered background image). */
   landscape: RenderedRepresentation;
+  /** Optional edgeToEdge (notched / tall-screen) representations. Better
+   *  fit for very tall viewports like the Galaxy Z Fold cover screen. */
+  portraitEdge?: RenderedRepresentation;
+  landscapeEdge?: RenderedRepresentation;
 }
 
 export interface RenderedRepresentation {
