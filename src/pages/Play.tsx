@@ -31,6 +31,8 @@ declare global {
     EJS_onGameStart?: () => void;
     EJS_VirtualGamepadSettings?: any;
     EJS_volume?: number;
+    EJS_disableDatabases?: boolean;
+    EJS_defaultOptions?: Record<string, string | number | boolean>;
   }
 }
 
@@ -123,6 +125,31 @@ export default function Play() {
     window.EJS_gameID = game.id;
     window.EJS_color = "#a855f7";
     window.EJS_volume = 0.6;
+    // Disable EmulatorJS's built-in on-screen virtual gamepad — we render our
+    // own controls below the screen. Without this, EJS overlays Fast/Slow/
+    // Select/Start buttons directly on top of the gameplay on mobile.
+    window.EJS_Buttons = {
+      playPause: false,
+      restart: false,
+      mute: false,
+      settings: true,
+      fullscreen: true,
+      saveState: false,
+      loadState: false,
+      screenRecord: false,
+      gamepad: false,
+      cheat: false,
+      volume: false,
+      saveSavFiles: false,
+      loadSavFiles: false,
+      quickSave: false,
+      quickLoad: false,
+      screenshot: false,
+      cacheManager: false,
+      exitEmulation: false,
+      contextMenuButton: false,
+    };
+    window.EJS_VirtualGamepadSettings = [];
     window.EJS_ready = () => setReady(true);
     window.EJS_onGameStart = () => setStarted(true);
 
