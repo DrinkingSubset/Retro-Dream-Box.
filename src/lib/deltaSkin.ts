@@ -282,3 +282,28 @@ export function expandInputs(item: SkinItem): DeltaInput[] {
   if (Array.isArray(item.inputs)) return item.inputs as DeltaInput[];
   return Object.values(item.inputs) as DeltaInput[];
 }
+
+/**
+ * Pick the best rendered representation for the current viewport. We
+ * prefer the `edgeToEdge` variant when its mapping aspect ratio is closer
+ * to the viewport — this is what makes the Galaxy Z Fold cover screen
+ * (very tall) and unfolded inner screen (near-square) both look right.
+ */
+export function pickRepresentation(
+  skin: ParsedSkin,
+  orientation: "portrait" | "landscape",
+  viewport: { width: number; height: number },
+): RenderedRepresentation {
+  const std = orientation === "portrait" ? skin.portrait : skin.landscape;
+  const edge = orientation === "portrait" ? skin.portraitEdge : skin.landscapeEdge;
+  if (!edge) return std;
+
+  const targetAspect = viewport.width / Math.max(1, viewport.height);
+  const stdAspect = std.mappingWidth / std.mappingHeight;
+  const edgeAspect = edge.mappingWidth / edge.mappingHeight;
+
+  return Math.abs(edgeAspect - targetAspect) < Math.abs(stdAspect - targetAspect)
+    ? edge
+    : std;
+}
+
