@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,10 +8,18 @@ import Index from "./pages/Index.tsx";
 import Play from "./pages/Play.tsx";
 import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { preloadEmulatorCores } from "@/lib/corePreload";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Warm the EmulatorJS core cache as soon as the app mounts so clicking a
+  // ROM doesn't trigger a fresh ~2 MB download each time.
+  useEffect(() => {
+    preloadEmulatorCores();
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -26,6 +35,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
