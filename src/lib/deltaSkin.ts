@@ -106,7 +106,7 @@ async function renderPdfToImage(
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not get 2D context");
 
-    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+    await page.render({ canvasContext: ctx, viewport }).promise;
     return {
       dataUrl: canvas.toDataURL("image/png"),
       width: canvas.width,
