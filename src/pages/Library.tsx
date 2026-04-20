@@ -62,7 +62,7 @@ export default function Library() {
                 <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-display font-semibold tracking-[0.25em] text-primary-glow uppercase">Delta</p>
+                <p className="text-[10px] sm:text-xs font-display font-semibold tracking-[0.25em] text-primary-glow uppercase">Retro Play</p>
                 <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold leading-none">Your Library</h1>
               </div>
             </div>
