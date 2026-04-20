@@ -92,7 +92,11 @@ function load(): AppSettings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULTS, ...parsed, players: { ...DEFAULTS.players, ...(parsed.players ?? {}) } };
+    const mergedPlayers = { ...DEFAULTS.players } as AppSettings["players"];
+    for (const id of [1, 2, 3, 4] as PlayerId[]) {
+      mergedPlayers[id] = { ...DEFAULTS.players[id], ...(parsed.players?.[id] ?? {}) };
+    }
+    return { ...DEFAULTS, ...parsed, players: mergedPlayers };
   } catch {
     return DEFAULTS;
   }
