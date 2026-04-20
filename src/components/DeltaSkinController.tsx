@@ -367,7 +367,7 @@ function DpadRegion({
   return (
     <div
       className="absolute"
-      style={{ left, top, width, height }}
+      style={{ left, top, width, height, pointerEvents: "auto", touchAction: "none" }}
       onPointerDown={(e) => {
         e.preventDefault();
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
