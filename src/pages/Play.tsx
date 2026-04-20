@@ -294,6 +294,8 @@ export default function Play() {
       sendInput={sendInput}
       onBack={() => navigate("/")}
       containerRef={containerRef}
+      holdMode={holdMode}
+      onToggleHoldMode={() => setHoldMode((v) => !v)}
     />
   );
 }
@@ -305,17 +307,11 @@ interface PlayLayoutProps {
   sendInput: (button: string, pressed: boolean) => void;
   onBack: () => void;
   containerRef: React.MutableRefObject<HTMLDivElement | null>;
+  holdMode: boolean;
+  onToggleHoldMode: () => void;
 }
 
-/**
- * Renders the play screen. When a Delta-format skin exists for the current
- * system, the controller fills the viewport and the EmulatorJS canvas is
- * positioned (fixed) inside the screen-slot rect that the skin reports.
- *
- * When no Delta skin is available we fall back to the original layout:
- * game stage on top, generic VirtualController below.
- */
-function PlayLayout({ game, ready, started, sendInput, onBack, containerRef }: PlayLayoutProps) {
+function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode }: PlayLayoutProps) {
   const settings = useSettings();
   const player = settings.players[1];
   const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant) : null;
