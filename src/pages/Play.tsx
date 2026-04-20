@@ -170,7 +170,22 @@ export default function Play() {
     document.body.appendChild(script);
     scriptRef.current = script;
 
+    // Belt-and-braces: if the autoplay heuristic causes EJS to still render
+    // its "Start Game" overlay, click it for the user. The original tap on
+    // the ROM tile counts as a user gesture, so this is allowed.
+    const autoStartInterval = window.setInterval(() => {
+      const btn = container.querySelector<HTMLElement>(
+        ".ejs_start_button, [class*='start_button'], .ejs_startgame_button",
+      );
+      if (btn) {
+        btn.click();
+        window.clearInterval(autoStartInterval);
+      }
+    }, 150);
+    window.setTimeout(() => window.clearInterval(autoStartInterval), 15000);
+
     return () => {
+      window.clearInterval(autoStartInterval);
       try {
         window.EJS_emulator?.callEvent?.("exit");
       } catch {
