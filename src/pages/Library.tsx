@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Gamepad2, Sparkles, AlertCircle } from "lucide-react";
-import { deleteGame, GameMeta, listGames, SystemId, SYSTEM_LABELS } from "@/lib/gameStore";
+import { Search, Gamepad2, Sparkles, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { GameMeta, listGames, SystemId, SYSTEM_LABELS } from "@/lib/gameStore";
 import GameCard from "@/components/GameCard";
 import UploadRomButton from "@/components/UploadRomButton";
 import SystemBadge from "@/components/SystemBadge";
-import { toast } from "sonner";
 
 type Filter = "all" | SystemId;
 
@@ -42,12 +41,6 @@ export default function Library() {
 
   const handlePlay = (g: GameMeta) => navigate(`/play/${g.id}`);
 
-  const handleDelete = async (g: GameMeta) => {
-    await deleteGame(g.id);
-    await refresh();
-    toast.success(`Removed ${g.name}`);
-  };
-
   const counts = useMemo(() => {
     const c = { all: games.length, gba: 0, gbc: 0, nes: 0 } as Record<Filter, number>;
     games.forEach((g) => (c[g.system] += 1));
@@ -63,14 +56,23 @@ export default function Library() {
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-accent/20 blur-3xl" />
 
         <div className="container relative z-10 py-10 sm:py-12 md:py-16">
-          <div className="flex items-center gap-3 mb-5 sm:mb-6">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow shrink-0">
-              <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+          <div className="flex items-start justify-between gap-3 mb-5 sm:mb-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow shrink-0">
+                <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-display font-semibold tracking-[0.25em] text-primary-glow uppercase">Delta</p>
+                <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold leading-none">Your Library</h1>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs font-display font-semibold tracking-[0.25em] text-primary-glow uppercase">Delta</p>
-              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold leading-none">Your Library</h1>
-            </div>
+            <button
+              onClick={() => navigate("/settings")}
+              aria-label="Settings"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full glass hover:bg-secondary/80 flex items-center justify-center transition-colors shrink-0"
+            >
+              <SettingsIcon className="w-5 h-5 text-foreground/80" />
+            </button>
           </div>
 
           <div className="max-w-2xl mb-6 sm:mb-8 animate-fade-up">
@@ -146,7 +148,7 @@ export default function Library() {
                 game={g}
                 index={i}
                 onPlay={handlePlay}
-                onDelete={handleDelete}
+                onChanged={() => refresh()}
               />
             ))}
           </div>

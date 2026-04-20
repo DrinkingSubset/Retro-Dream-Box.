@@ -12,6 +12,7 @@ export interface GameRecord {
   addedAt: number;
   lastPlayedAt?: number;
   playCount: number;
+  artworkDataUrl?: string;
 }
 
 export interface GameMeta {
@@ -23,6 +24,7 @@ export interface GameMeta {
   addedAt: number;
   lastPlayedAt?: number;
   playCount: number;
+  artworkDataUrl?: string;
 }
 
 const DB_NAME = "delta-emu";
@@ -111,6 +113,22 @@ export async function addGameFile(file: File): Promise<GameMeta | null> {
 export async function deleteGame(id: string): Promise<void> {
   const db = await getDb();
   await db.delete(STORE, id);
+}
+
+export async function renameGame(id: string, name: string): Promise<void> {
+  const db = await getDb();
+  const g = (await db.get(STORE, id)) as GameRecord | undefined;
+  if (!g) return;
+  g.name = name.trim() || g.name;
+  await db.put(STORE, g);
+}
+
+export async function setArtwork(id: string, dataUrl: string | undefined): Promise<void> {
+  const db = await getDb();
+  const g = (await db.get(STORE, id)) as GameRecord | undefined;
+  if (!g) return;
+  g.artworkDataUrl = dataUrl;
+  await db.put(STORE, g);
 }
 
 export async function markPlayed(id: string): Promise<void> {

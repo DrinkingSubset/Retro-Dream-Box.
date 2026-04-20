@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { SystemId } from "@/lib/gameStore";
+import { useSettings, triggerHaptic } from "@/lib/settingsStore";
 
 interface Props {
   system: SystemId;
@@ -19,6 +20,9 @@ interface Props {
  * Hidden on lg+ where keyboard/gamepad are expected.
  */
 export default function VirtualController({ system, onInput, variant = "bottom" }: Props) {
+  const settings = useSettings();
+  const player = settings.players[1];
+  const opacityStyle = { opacity: Math.max(0.05, player.opacity / 100) };
   const showShoulders = system === "gba";
 
   const press = useCallback(
@@ -27,6 +31,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
         e.preventDefault();
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
         (e.currentTarget as HTMLElement).dataset.active = "true";
+        triggerHaptic(settings);
         onInput(btn, true);
       },
       onPointerUp: (e: React.PointerEvent) => {
@@ -46,7 +51,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
       },
       onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     }),
-    [onInput],
+    [onInput, settings],
   );
 
   const dpadCls =
@@ -73,6 +78,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
           paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
           paddingRight: "max(0.5rem, env(safe-area-inset-right))",
           paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+          ...opacityStyle,
         }}
       >
         {/* D-Pad — bottom left */}
@@ -114,7 +120,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
   return (
     <div
       className="lg:hidden glass border-t border-border/40 px-3 sm:px-4 pt-3 sm:pt-4 select-none"
-      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))", ...opacityStyle }}
     >
       {showShoulders && (
         <div className="flex justify-between max-w-md mx-auto mb-3">
