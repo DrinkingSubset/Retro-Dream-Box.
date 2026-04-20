@@ -163,7 +163,11 @@ export default function Play() {
     };
     window.EJS_VirtualGamepadSettings = [];
     window.EJS_ready = () => setReady(true);
-    window.EJS_onGameStart = () => setStarted(true);
+    window.EJS_onGameStart = () => {
+      setStarted(true);
+      // Apply any saved cheats once the core is fully running.
+      if (id) getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
+    };
 
     // Fresh loader script every boot — EmulatorJS guards against double-init
     // internally but we want clean ordering after navigations.
