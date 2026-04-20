@@ -6,6 +6,7 @@ export type PlayerId = 1 | 2 | 3 | 4;
 export interface PlayerSettings {
   skin: SkinId;
   opacity: number; // 0-100
+  scale: number; // 50-150 (% of base size)
 }
 
 export interface AppSettings {
@@ -30,10 +31,10 @@ export const SKIN_LABELS: Record<SkinId, string> = {
 
 const DEFAULTS: AppSettings = {
   players: {
-    1: { skin: "gba", opacity: 80 },
-    2: { skin: "snes", opacity: 80 },
-    3: { skin: "nes", opacity: 80 },
-    4: { skin: "n64", opacity: 80 },
+    1: { skin: "gba", opacity: 80, scale: 100 },
+    2: { skin: "snes", opacity: 80, scale: 100 },
+    3: { skin: "nes", opacity: 80, scale: 100 },
+    4: { skin: "n64", opacity: 80, scale: 100 },
   },
   respectSilentMode: false,
   hapticFeedback: true,
