@@ -16,8 +16,24 @@ import JSZip from "jszip";
 import * as pdfjs from "pdfjs-dist";
 // Vite-bundled PDF.js worker. The `?url` suffix gives us a static URL.
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { get as idbGet, set as idbSet, createStore } from "idb-keyval";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+/**
+ * IndexedDB store for cached rendered skin representations.
+ * Key: `${skinUrl}::${orientation}` → cached PNG data URL + metadata.
+ * This avoids re-rasterising the same PDF every time a game opens.
+ */
+const SKIN_CACHE_VERSION = 1;
+const skinStore = createStore("delta-skin-cache", "rendered-v1");
+
+interface CachedRep {
+  v: number;
+  imageDataUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+}
 
 /** Logical input names recognised by Delta skins. */
 export type DeltaInput =
