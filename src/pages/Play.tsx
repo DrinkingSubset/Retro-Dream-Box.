@@ -66,6 +66,8 @@ export default function Play() {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
+  const [holdMode, setHoldMode] = useState(false);
+  const heldRef = useRef<Set<string>>(new Set());
   const blobUrlRef = useRef<string | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
