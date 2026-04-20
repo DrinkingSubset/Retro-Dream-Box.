@@ -16,8 +16,24 @@ import JSZip from "jszip";
 import * as pdfjs from "pdfjs-dist";
 // Vite-bundled PDF.js worker. The `?url` suffix gives us a static URL.
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { get as idbGet, set as idbSet, createStore } from "idb-keyval";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+/**
+ * IndexedDB store for cached rendered skin representations.
+ * Key: `${skinUrl}::${orientation}` → cached PNG data URL + metadata.
+ * This avoids re-rasterising the same PDF every time a game opens.
+ */
+const SKIN_CACHE_VERSION = 1;
+const skinStore = createStore("delta-skin-cache", "rendered-v1");
+
+interface CachedRep {
+  v: number;
+  imageDataUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+}
 
 /** Logical input names recognised by Delta skins. */
 export type DeltaInput =
@@ -126,6 +142,35 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
   if (existing) return existing;
 
   const promise = (async (): Promise<ParsedSkin> => {
+    // Try IndexedDB cache first — avoids refetching the .deltaskin and
+    // re-rasterising both PDFs.
+    try {
+      const [cPortrait, cLandscape, cMeta] = await Promise.all([
+        idbGet<CachedRep>(`${url}::portrait`, skinStore),
+        idbGet<CachedRep>(`${url}::landscape`, skinStore),
+        idbGet<{
+          name: string;
+          identifier: string;
+          portrait: Omit<RenderedRepresentation, "imageDataUrl" | "imageWidth" | "imageHeight">;
+          landscape: Omit<RenderedRepresentation, "imageDataUrl" | "imageWidth" | "imageHeight">;
+        }>(`${url}::meta`, skinStore),
+      ]);
+      if (
+        cPortrait?.v === SKIN_CACHE_VERSION &&
+        cLandscape?.v === SKIN_CACHE_VERSION &&
+        cMeta
+      ) {
+        return {
+          name: cMeta.name,
+          identifier: cMeta.identifier,
+          portrait: { ...cMeta.portrait, imageDataUrl: cPortrait.imageDataUrl, imageWidth: cPortrait.imageWidth, imageHeight: cPortrait.imageHeight },
+          landscape: { ...cMeta.landscape, imageDataUrl: cLandscape.imageDataUrl, imageWidth: cLandscape.imageWidth, imageHeight: cLandscape.imageHeight },
+        };
+      }
+    } catch {
+      // IndexedDB unavailable (private mode, etc.) — fall through to network.
+    }
+
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Skin fetch failed: ${res.status}`);
     const buf = await res.arrayBuffer();
@@ -164,12 +209,41 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
       renderRep(reps.landscape),
     ]);
 
-    return {
+    const result: ParsedSkin = {
       name: info.name ?? "Skin",
       identifier: info.identifier ?? url,
       portrait,
       landscape,
     };
+
+    // Persist rendered PNGs + layout metadata to IndexedDB. Fire-and-forget;
+    // failures are non-fatal (quota exceeded, private mode, etc.).
+    const stripImage = (r: RenderedRepresentation) => {
+      const { imageDataUrl: _i, imageWidth: _w, imageHeight: _h, ...rest } = r;
+      return rest;
+    };
+    Promise.all([
+      idbSet(`${url}::portrait`, {
+        v: SKIN_CACHE_VERSION,
+        imageDataUrl: portrait.imageDataUrl,
+        imageWidth: portrait.imageWidth,
+        imageHeight: portrait.imageHeight,
+      }, skinStore),
+      idbSet(`${url}::landscape`, {
+        v: SKIN_CACHE_VERSION,
+        imageDataUrl: landscape.imageDataUrl,
+        imageWidth: landscape.imageWidth,
+        imageHeight: landscape.imageHeight,
+      }, skinStore),
+      idbSet(`${url}::meta`, {
+        name: result.name,
+        identifier: result.identifier,
+        portrait: stripImage(portrait),
+        landscape: stripImage(landscape),
+      }, skinStore),
+    ]).catch(() => { /* non-fatal */ });
+
+    return result;
   })();
 
   cache.set(url, promise);
