@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { SystemId } from "@/lib/gameStore";
+import { useSettings, triggerHaptic } from "@/lib/settingsStore";
 
 interface Props {
   system: SystemId;
@@ -19,6 +20,9 @@ interface Props {
  * Hidden on lg+ where keyboard/gamepad are expected.
  */
 export default function VirtualController({ system, onInput, variant = "bottom" }: Props) {
+  const settings = useSettings();
+  const player = settings.players[1];
+  const opacityStyle = { opacity: Math.max(0.05, player.opacity / 100) };
   const showShoulders = system === "gba";
 
   const press = useCallback(
@@ -27,6 +31,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
         e.preventDefault();
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
         (e.currentTarget as HTMLElement).dataset.active = "true";
+        triggerHaptic(settings);
         onInput(btn, true);
       },
       onPointerUp: (e: React.PointerEvent) => {
@@ -46,7 +51,7 @@ export default function VirtualController({ system, onInput, variant = "bottom" 
       },
       onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     }),
-    [onInput],
+    [onInput, settings],
   );
 
   const dpadCls =
