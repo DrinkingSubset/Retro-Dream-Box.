@@ -219,32 +219,54 @@ export default function Play() {
   }, [game]);
 
   // Map virtual controller -> EmulatorJS (libretro joypad indices)
-  const sendInput = (button: string, pressed: boolean) => {
+  const sendInput = useCallback((button: string, pressed: boolean) => {
     const emu = window.EJS_emulator;
     const sim = emu?.gameManager?.simulateInput;
     if (!sim) return;
     const map: Record<string, number> = {
-      B: 0,
-      Y: 1,
-      SELECT: 2,
-      START: 3,
-      UP: 4,
-      DOWN: 5,
-      LEFT: 6,
-      RIGHT: 7,
-      A: 8,
-      X: 9,
-      L: 10,
-      R: 11,
+      B: 0, Y: 1, SELECT: 2, START: 3,
+      UP: 4, DOWN: 5, LEFT: 6, RIGHT: 7,
+      A: 8, X: 9, L: 10, R: 11,
     };
     const idx = map[button];
     if (idx === undefined) return;
+
+    // Hold-button mode: a press toggles a latched state. We only act on the
+    // press edge (pressed === true) and ignore the release. Pressing the
+    // same button again releases it.
+    if (holdMode) {
+      if (!pressed) return;
+      const held = heldRef.current;
+      const isHeld = held.has(button);
+      try {
+        emu.gameManager.simulateInput(0, idx, isHeld ? 0 : 1);
+      } catch { /* ignore */ }
+      if (isHeld) held.delete(button);
+      else held.add(button);
+      return;
+    }
+
     try {
       emu.gameManager.simulateInput(0, idx, pressed ? 1 : 0);
     } catch {
       // ignore
     }
-  };
+  }, [holdMode]);
+
+  // When leaving hold mode, release everything currently latched.
+  useEffect(() => {
+    if (holdMode) return;
+    const emu = window.EJS_emulator;
+    const map: Record<string, number> = {
+      B: 0, Y: 1, SELECT: 2, START: 3,
+      UP: 4, DOWN: 5, LEFT: 6, RIGHT: 7,
+      A: 8, X: 9, L: 10, R: 11,
+    };
+    for (const b of heldRef.current) {
+      try { emu?.gameManager?.simulateInput?.(0, map[b], 0); } catch { /* ignore */ }
+    }
+    heldRef.current.clear();
+  }, [holdMode]);
 
   if (error) {
     return (
