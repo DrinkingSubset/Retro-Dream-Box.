@@ -24,11 +24,11 @@ interface Props {
    */
   onInput: (button: string, pressed: boolean) => void;
   /**
-   * Optional render-prop for the gameplay screen. The controller reserves
-   * space above itself in portrait, or fills the full canvas in landscape
-   * with controls floating on top.
+   * Called whenever the screen-slot rect changes (resize / orientation).
+   * Play.tsx uses this to position the EmulatorJS container exactly inside
+   * the slot — viewport coordinates.
    */
-  renderScreen?: () => React.ReactNode;
+  onScreenRect?: (rect: { left: number; top: number; width: number; height: number } | null) => void;
   /** Tap "menu" to open this callback (e.g. emulator pause). */
   onMenu?: () => void;
 }
