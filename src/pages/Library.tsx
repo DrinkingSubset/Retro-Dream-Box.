@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Gamepad2, Sparkles, AlertCircle } from "lucide-react";
-import { deleteGame, GameMeta, listGames, SystemId, SYSTEM_LABELS } from "@/lib/gameStore";
+import { Search, Gamepad2, Sparkles, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { GameMeta, listGames, SystemId, SYSTEM_LABELS } from "@/lib/gameStore";
 import GameCard from "@/components/GameCard";
 import UploadRomButton from "@/components/UploadRomButton";
 import SystemBadge from "@/components/SystemBadge";
-import { toast } from "sonner";
 
 type Filter = "all" | SystemId;
 
@@ -41,12 +40,6 @@ export default function Library() {
   const refresh = async () => setGames(await listGames());
 
   const handlePlay = (g: GameMeta) => navigate(`/play/${g.id}`);
-
-  const handleDelete = async (g: GameMeta) => {
-    await deleteGame(g.id);
-    await refresh();
-    toast.success(`Removed ${g.name}`);
-  };
 
   const counts = useMemo(() => {
     const c = { all: games.length, gba: 0, gbc: 0, nes: 0 } as Record<Filter, number>;
@@ -146,7 +139,7 @@ export default function Library() {
                 game={g}
                 index={i}
                 onPlay={handlePlay}
-                onDelete={handleDelete}
+                onChanged={() => refresh()}
               />
             ))}
           </div>
