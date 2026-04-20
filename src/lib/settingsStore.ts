@@ -18,14 +18,21 @@ export type GbcVariantId =
   | "horror"
   | "teal";
 
+/**
+ * Game Boy Advance "Atomic Advance" skin variants by starvingartist.
+ */
+export type GbaVariantId =
+  | "atomic-purple"
+  | "smoke-gray"
+  | "wave-blue"
+  | "fire-red"
+  | "leaf-green";
+
 export interface GbcVariant {
   id: GbcVariantId;
   label: string;
-  /** Hex color of the console body. */
   body: string;
-  /** Hex color used for buttons (D-pad / A / B). */
   button: string;
-  /** Optional darker accent for shadows / borders. */
   accent: string;
 }
 
@@ -41,12 +48,27 @@ export const GBC_VARIANTS: GbcVariant[] = [
   { id: "teal",          label: "Teal",          body: "#009090", button: "#1a2a2a", accent: "#005858" },
 ];
 
+export interface GbaVariant {
+  id: GbaVariantId;
+  label: string;
+  body: string;
+}
+export const GBA_VARIANTS: GbaVariant[] = [
+  { id: "atomic-purple", label: "Atomic Purple", body: "#9078a8" },
+  { id: "smoke-gray",    label: "Smoke Gray",    body: "#5e5e5e" },
+  { id: "wave-blue",     label: "Wave Blue",     body: "#3a6db5" },
+  { id: "fire-red",      label: "Fire Red",      body: "#c0282a" },
+  { id: "leaf-green",    label: "Leaf Green",    body: "#3a8a3a" },
+];
+
 export interface PlayerSettings {
   skin: SkinId;
   opacity: number; // 0-100
   scale: number; // 50-150 (% of base size)
   /** GBC color variant — applied when the active controller skin is GBC. */
   gbcVariant: GbcVariantId;
+  /** GBA color variant — applied when the active controller skin is GBA. */
+  gbaVariant: GbaVariantId;
 }
 
 export interface AppSettings {
@@ -71,10 +93,10 @@ export const SKIN_LABELS: Record<SkinId, string> = {
 
 const DEFAULTS: AppSettings = {
   players: {
-    1: { skin: "gba", opacity: 80, scale: 100, gbcVariant: "atomic-purple" },
-    2: { skin: "snes", opacity: 80, scale: 100, gbcVariant: "default" },
-    3: { skin: "nes", opacity: 80, scale: 100, gbcVariant: "default" },
-    4: { skin: "n64", opacity: 80, scale: 100, gbcVariant: "default" },
+    1: { skin: "gba", opacity: 80, scale: 100, gbcVariant: "atomic-purple", gbaVariant: "atomic-purple" },
+    2: { skin: "snes", opacity: 80, scale: 100, gbcVariant: "default", gbaVariant: "atomic-purple" },
+    3: { skin: "nes", opacity: 80, scale: 100, gbcVariant: "default", gbaVariant: "atomic-purple" },
+    4: { skin: "n64", opacity: 80, scale: 100, gbcVariant: "default", gbaVariant: "atomic-purple" },
   },
   respectSilentMode: false,
   hapticFeedback: true,

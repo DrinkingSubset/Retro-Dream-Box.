@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2 } from "lucide-react";
-import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, type SkinId, type PlayerId } from "@/lib/settingsStore";
+import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, GBA_VARIANTS, type SkinId, type PlayerId } from "@/lib/settingsStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -118,6 +118,42 @@ export default function Settings() {
                                 style={{ background: v.button }}
                               />
                             </div>
+                            <p className="font-display font-semibold text-xs mt-2 truncate">{v.label}</p>
+                            {active && (
+                              <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* GBA color variants */}
+                {player.skin === "gba" && (
+                  <div>
+                    <Label className="text-sm font-display font-semibold mb-1 block">Game Boy Advance skin</Label>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      "Atomic Advance" by starvingartist — pick a colourway for your GBA controls.
+                    </p>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                      {GBA_VARIANTS.map((v) => {
+                        const active = player.gbaVariant === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            onClick={() => updatePlayer(activePlayer, { gbaVariant: v.id })}
+                            className={`relative rounded-2xl border p-3 text-left transition-all ${
+                              active
+                                ? "border-primary bg-primary/10 shadow-glow"
+                                : "border-border/50 bg-card/40 hover:border-primary/40"
+                            }`}
+                            aria-label={`Apply ${v.label} skin`}
+                          >
+                            <div
+                              className="h-12 rounded-xl"
+                              style={{ background: v.body }}
+                            />
                             <p className="font-display font-semibold text-xs mt-2 truncate">{v.label}</p>
                             {active && (
                               <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary" />

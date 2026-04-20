@@ -7,10 +7,9 @@
  * the app.
  */
 import type { SystemId } from "@/lib/gameStore";
-import type { GbcVariantId } from "@/lib/settingsStore";
+import type { GbcVariantId, GbaVariantId } from "@/lib/settingsStore";
 
 export interface SkinRegistryEntry {
-  /** URL relative to the site root, or null if no Delta-format skin exists. */
   url: string | null;
   label: string;
 }
@@ -28,15 +27,30 @@ export const GBC_SKIN_URLS: Record<GbcVariantId, string> = {
 };
 
 /**
- * Default Delta-format skin per system, or null if we use the built-in
- * HTML/CSS controller.
+ * Game Boy Advance — the "Atomic Advance" pack by starvingartist.
+ * All five colour variants ship with both standard and edgeToEdge
+ * representations, so they look right on every device including the
+ * Galaxy Z Fold cover screen and unfolded inner screen.
  */
+export const GBA_SKIN_URLS: Record<GbaVariantId, string> = {
+  "atomic-purple": "/skins/aa-atomicpurple.deltaskin",
+  "smoke-gray":    "/skins/aa-smokegray.deltaskin",
+  "wave-blue":     "/skins/aa-waveblue.deltaskin",
+  "fire-red":      "/skins/aa-firered.deltaskin",
+  "leaf-green":    "/skins/aa-leafgreen.deltaskin",
+};
+
 export const DEFAULT_DELTASKIN_URL: Partial<Record<SystemId, string>> = {
-  gba: "/skins/gba-thumbstick.deltaskin",
+  gba: GBA_SKIN_URLS["atomic-purple"],
   gbc: GBC_SKIN_URLS["default"],
 };
 
-export function getSkinUrlForSystem(system: SystemId, gbcVariant: GbcVariantId): string | null {
+export function getSkinUrlForSystem(
+  system: SystemId,
+  gbcVariant: GbcVariantId,
+  gbaVariant: GbaVariantId = "atomic-purple",
+): string | null {
   if (system === "gbc") return GBC_SKIN_URLS[gbcVariant] ?? GBC_SKIN_URLS["default"];
+  if (system === "gba") return GBA_SKIN_URLS[gbaVariant] ?? GBA_SKIN_URLS["atomic-purple"];
   return DEFAULT_DELTASKIN_URL[system] ?? null;
 }

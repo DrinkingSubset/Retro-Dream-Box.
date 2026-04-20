@@ -314,7 +314,7 @@ interface PlayLayoutProps {
 function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode }: PlayLayoutProps) {
   const settings = useSettings();
   const player = settings.players[1];
-  const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant) : null;
+  const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant, player.gbaVariant) : null;
 
   // Track viewport orientation so the skin controller knows which
   // representation to render.
