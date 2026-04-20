@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { loadDeltaSkin, expandInputs, type ParsedSkin, type RenderedRepresentation, type SkinItem } from "@/lib/deltaSkin";
+import { loadDeltaSkin, expandInputs, pickRepresentation, type ParsedSkin, type RenderedRepresentation, type SkinItem } from "@/lib/deltaSkin";
 import { useSettings, triggerHaptic } from "@/lib/settingsStore";
 
 /**
@@ -84,7 +84,10 @@ export default function DeltaSkinController({
     return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
   }
 
-  const rep = orientation === "portrait" ? skin.portrait : skin.landscape;
+  const rep = pickRepresentation(skin, orientation, {
+    width: typeof window !== "undefined" ? window.innerWidth : 390,
+    height: typeof window !== "undefined" ? window.innerHeight : 844,
+  });
 
   return (
     <SkinCanvas
