@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2 } from "lucide-react";
-import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, type SkinId, type PlayerId } from "@/lib/settingsStore";
+import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, type SkinId, type PlayerId } from "@/lib/settingsStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -79,6 +79,55 @@ export default function Settings() {
                     })}
                   </div>
                 </div>
+
+                {/* GBC color variants — only meaningful when the GBC skin is selected. */}
+                {player.skin === "gbc" && (
+                  <div>
+                    <Label className="text-sm font-display font-semibold mb-1 block">Game Boy Color skin</Label>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Pick a color — applied to the on-screen controls when you play a Game Boy Color game.
+                    </p>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {GBC_VARIANTS.map((v) => {
+                        const active = player.gbcVariant === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            onClick={() => updatePlayer(activePlayer, { gbcVariant: v.id })}
+                            className={`relative rounded-2xl border p-3 text-left transition-all ${
+                              active
+                                ? "border-primary bg-primary/10 shadow-glow"
+                                : "border-border/50 bg-card/40 hover:border-primary/40"
+                            }`}
+                            aria-label={`Apply ${v.label} skin`}
+                          >
+                            <div
+                              className="h-12 rounded-xl relative overflow-hidden"
+                              style={{ background: `linear-gradient(180deg, ${v.body}, ${v.accent})` }}
+                            >
+                              <div
+                                className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-sm"
+                                style={{ background: v.button }}
+                              />
+                              <div
+                                className="absolute right-2 top-2 w-3 h-3 rounded-full"
+                                style={{ background: v.button }}
+                              />
+                              <div
+                                className="absolute right-2 bottom-2 w-3 h-3 rounded-full"
+                                style={{ background: v.button }}
+                              />
+                            </div>
+                            <p className="font-display font-semibold text-xs mt-2 truncate">{v.label}</p>
+                            {active && (
+                              <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Opacity */}
                 <div>
