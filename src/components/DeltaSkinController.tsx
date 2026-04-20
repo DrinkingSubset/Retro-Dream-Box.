@@ -46,7 +46,7 @@ export default function DeltaSkinController({
   skinUrl,
   orientation,
   onInput,
-  renderScreen,
+  onScreenRect,
   onMenu,
 }: Props) {
   const settings = useSettings();
@@ -66,6 +66,12 @@ export default function DeltaSkinController({
     return () => { cancelled = true; };
   }, [skinUrl]);
 
+  // When the skin fails to load or while loading, clear any reported
+  // screen rect so the EJS canvas can fall back to a default position.
+  useEffect(() => {
+    if (error || !skin) onScreenRect?.(null);
+  }, [error, skin, onScreenRect]);
+
   if (error) {
     return (
       <div className="text-xs text-destructive p-2 text-center">
@@ -75,7 +81,6 @@ export default function DeltaSkinController({
   }
 
   if (!skin) {
-    // Reserve some space while loading so the layout doesn't jump.
     return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
   }
 
@@ -86,7 +91,7 @@ export default function DeltaSkinController({
       rep={rep}
       orientation={orientation}
       onInput={onInput}
-      renderScreen={renderScreen}
+      onScreenRect={onScreenRect}
       onMenu={onMenu}
       opacity={opacity}
       onPress={() => triggerHaptic(settings)}
@@ -98,13 +103,13 @@ interface CanvasProps {
   rep: RenderedRepresentation;
   orientation: "portrait" | "landscape";
   onInput: (button: string, pressed: boolean) => void;
-  renderScreen?: () => React.ReactNode;
+  onScreenRect?: (rect: { left: number; top: number; width: number; height: number } | null) => void;
   onMenu?: () => void;
   opacity: number;
   onPress: () => void;
 }
 
-function SkinCanvas({ rep, orientation, onInput, renderScreen, onMenu, opacity, onPress }: CanvasProps) {
+function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, onPress }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   /** [width, height] of the rendered skin area, in CSS pixels. */
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -132,11 +137,9 @@ function SkinCanvas({ rep, orientation, onInput, renderScreen, onMenu, opacity, 
     const containerAspect = size.w / size.h;
     let width: number, height: number;
     if (containerAspect > aspect) {
-      // Container is wider — height-bound
       height = size.h;
       width = height * aspect;
     } else {
-      // Container is taller — width-bound
       width = size.w;
       height = width / aspect;
     }
@@ -148,6 +151,31 @@ function SkinCanvas({ rep, orientation, onInput, renderScreen, onMenu, opacity, 
     };
   }, [size, aspect, orientation]);
 
+  // Report the screen-slot rect (in viewport coordinates) to the parent so
+  // it can position the EmulatorJS canvas exactly inside it.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !onScreenRect || !size.w) return;
+    const c = el.getBoundingClientRect();
+    if (orientation === "portrait") {
+      // Screen sits in the area above the skin, full container width.
+      onScreenRect({
+        left: c.left,
+        top: c.top,
+        width: size.w,
+        height: skinRect.top,
+      });
+    } else {
+      // Screen fills the container; controls float on top.
+      onScreenRect({
+        left: c.left,
+        top: c.top,
+        width: size.w,
+        height: size.h,
+      });
+    }
+  }, [size, skinRect, orientation, onScreenRect]);
+
   // Convert a logical mappingSize coordinate to a CSS pixel offset within
   // the skin rect. This is the core of pixel-faithful hit-target mapping.
   const scale = skinRect.width / rep.mappingWidth;
@@ -158,12 +186,6 @@ function SkinCanvas({ rep, orientation, onInput, renderScreen, onMenu, opacity, 
       className="relative w-full h-full select-none no-select"
       style={{ touchAction: "none" }}
     >
-      {renderScreen && (
-        <ScreenSlot orientation={orientation} skinRect={skinRect} containerSize={size}>
-          {renderScreen()}
-        </ScreenSlot>
-      )}
-
       {/* Skin background — PDF artwork. */}
       <img
         src={rep.imageDataUrl}
@@ -204,43 +226,8 @@ function SkinCanvas({ rep, orientation, onInput, renderScreen, onMenu, opacity, 
   );
 }
 
-/**
- * Positions the gameplay screen above the skin (portrait) or full-bleed
- * behind it (landscape).
- */
-function ScreenSlot({
-  orientation,
-  skinRect,
-  containerSize,
-  children,
-}: {
-  orientation: "portrait" | "landscape";
-  skinRect: { left: number; top: number; width: number; height: number };
-  containerSize: { w: number; h: number };
-  children: React.ReactNode;
-}) {
-  if (orientation === "portrait") {
-    // Screen sits above the skin, filling the area between the top of the
-    // container and the top of the skin.
-    return (
-      <div
-        className="absolute bg-black overflow-hidden"
-        style={{
-          left: 0,
-          top: 0,
-          width: containerSize.w,
-          height: skinRect.top,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
-  // Landscape — screen fills the full container; controls float on top.
-  return (
-    <div className="absolute inset-0 bg-black overflow-hidden">{children}</div>
-  );
-}
+// ScreenSlot is no longer used — Play.tsx positions the EJS canvas directly
+// based on the rect reported via onScreenRect.
 
 interface HitRegionProps {
   item: SkinItem;
