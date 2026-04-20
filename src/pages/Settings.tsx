@@ -94,6 +94,21 @@ export default function Settings() {
                     step={1}
                   />
                 </div>
+
+                {/* Size */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-sm font-display font-semibold">Controller size</Label>
+                    <span className="text-sm text-muted-foreground tabular-nums">{player.scale}%</span>
+                  </div>
+                  <Slider
+                    value={[player.scale]}
+                    onValueChange={([v]) => updatePlayer(activePlayer, { scale: v })}
+                    min={50}
+                    max={150}
+                    step={5}
+                  />
+                </div>
               </TabsContent>
             ))}
           </Tabs>
