@@ -153,6 +153,21 @@
   .fold-landscape-hide { display: none !important; }
 }
 
+/* Hide EmulatorJS's built-in on-screen virtual gamepad and floating buttons.
+   We render our own touch controls below the screen, so any EJS-injected
+   overlay (Fast/Slow/Select/Start, virtual dpad, hamburger menu) would
+   block the gameplay area. */
+#emu-game .ejs_virtualGamepad,
+#emu-game [class*="ejs_virtualGamepad"],
+#emu-game .ejs_menu_bar,
+#emu-game .ejs_menu_button,
+#emu-game .ejs_context_menu,
+#emu-game [class*="ejs_button"][class*="bar"],
+#emu-game .ejs_settings_parent {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 @keyframes float-slow {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-12px); }

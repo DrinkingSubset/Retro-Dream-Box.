@@ -22,7 +22,12 @@ interface Props {
 export default function VirtualController({ system, onInput, variant = "bottom" }: Props) {
   const settings = useSettings();
   const player = settings.players[1];
-  const opacityStyle = { opacity: Math.max(0.05, player.opacity / 100) };
+  const scale = Math.max(0.5, Math.min(1.5, player.scale / 100));
+  const opacityStyle = {
+    opacity: Math.max(0.05, player.opacity / 100),
+    transform: `scale(${scale})`,
+    transformOrigin: variant === "bottom" ? "bottom center" : "center",
+  } as React.CSSProperties;
   const showShoulders = system === "gba";
 
   const press = useCallback(
