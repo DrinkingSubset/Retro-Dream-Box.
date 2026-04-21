@@ -87,6 +87,8 @@ export interface AppSettings {
   appIcon: "default" | "midnight" | "retro" | "neon";
   /** Picture profile applied to the emulator canvas. */
   displayMode: DisplayMode;
+  /** Show a live FPS counter overlay while a game is running. */
+  showFps: boolean;
   cloudSync: {
     googleDrive: { connected: boolean; email?: string };
     dropbox: { connected: boolean; email?: string };
@@ -113,6 +115,7 @@ const DEFAULTS: AppSettings = {
   hapticFeedback: true,
   appIcon: "default",
   displayMode: "vivid",
+  showFps: false,
   cloudSync: {
     googleDrive: { connected: false },
     dropbox: { connected: false },
