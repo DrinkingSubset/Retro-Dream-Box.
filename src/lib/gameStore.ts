@@ -173,9 +173,12 @@ export async function getGame(id: string): Promise<GameRecord | undefined> {
 }
 
 export async function addGameFile(file: File): Promise<GameMeta | null> {
-  const system = detectSystem(file.name);
-  if (!system) return null;
+  // Read the file once, then run header detection. This catches misnamed
+  // ROMs (e.g. a GBA dump saved as `.gb`) that the extension-only path
+  // would route to the wrong emulator core / skin.
   const data = await file.arrayBuffer();
+  const system = detectSystem(file.name, data);
+  if (!system) return null;
   const id = crypto.randomUUID();
   const record: GameRecord = {
     id,
