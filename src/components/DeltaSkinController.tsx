@@ -85,6 +85,8 @@ export default function DeltaSkinController({
     return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
   }
 
+  const layout = useSkinLayout(skinUrl);
+
   return (
     <SkinCanvasWrapper
       skin={skin}
@@ -94,6 +96,7 @@ export default function DeltaSkinController({
       onMenu={onMenu}
       opacity={opacity}
       settings={settings}
+      layout={layout}
     />
   );
 }
