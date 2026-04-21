@@ -178,12 +178,12 @@ export default function SaveStatesDialog({ gameId, open, onOpenChange }: Props) 
           })}
         </div>
 
-        <DialogFooter>
+        <SheetFooter className="mt-3 flex-row">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4" /> Close
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
