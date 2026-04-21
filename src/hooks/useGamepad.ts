@@ -77,11 +77,37 @@ export function useGamepad({ enabled, onInput }: GamepadOptions) {
       toast({ title: "Controller disconnected" });
     };
 
-    window.addEventListener("gamepadconnected", onConnect);
-    window.addEventListener("gamepaddisconnected", onDisconnect);
+    let connectedCount = 0;
+    const startLoop = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(tick);
+    };
+    const stopLoop = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const onConnectStart = (e: GamepadEvent) => {
+      connectedCount++;
+      onConnect(e);
+      startLoop();
+    };
+    const onDisconnectStart = (e: GamepadEvent) => {
+      connectedCount = Math.max(0, connectedCount - 1);
+      onDisconnect(e);
+      if (connectedCount === 0) stopLoop();
+    };
+
+    window.addEventListener("gamepadconnected", onConnectStart);
+    window.addEventListener("gamepaddisconnected", onDisconnectStart);
 
     const tick = () => {
       const pads = navigator.getGamepads?.() ?? [];
+      // No pads at all — pause the loop until a connect event fires.
+      if (!pads.some((p) => p)) {
+        raf = 0;
+        return;
+      }
       for (const pad of pads) {
         if (!pad) continue;
         const pressed = new Set<string>();
@@ -117,11 +143,16 @@ export function useGamepad({ enabled, onInput }: GamepadOptions) {
       raf = requestAnimationFrame(tick);
     };
 
-    raf = requestAnimationFrame(tick);
+    // Kick off the loop only if a controller is already attached at mount.
+    const initial = navigator.getGamepads?.() ?? [];
+    if (initial.some((p) => p)) {
+      connectedCount = initial.filter((p) => p).length;
+      raf = requestAnimationFrame(tick);
+    }
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("gamepadconnected", onConnect);
-      window.removeEventListener("gamepaddisconnected", onDisconnect);
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("gamepadconnected", onConnectStart);
+      window.removeEventListener("gamepaddisconnected", onDisconnectStart);
       // Release any held buttons on teardown.
       prev.forEach((set) => set.forEach((btn) => onInputRef.current(btn, false)));
     };
