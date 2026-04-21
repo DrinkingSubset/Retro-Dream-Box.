@@ -5,11 +5,13 @@ import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord, type SystemId } fr
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
-import PlayMenu, { applyCheatsToEmulator } from "@/components/PlayMenu";
+import PlayMenu, { applyCheatsToEmulator, applySpeedToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
 import { useSettings, DISPLAY_MODE_FILTERS } from "@/lib/settingsStore";
 import { getCheats } from "@/lib/cheatStore";
 import { useGamepad } from "@/hooks/useGamepad";
+import { useGameSettings, getGameSettings } from "@/lib/gameSettingsStore";
+import { getShaderStyles, composeFilters } from "@/lib/shaders";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
