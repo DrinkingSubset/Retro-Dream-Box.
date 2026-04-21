@@ -177,7 +177,8 @@ export default function Play() {
         getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
         // Restore the per-game default speed (1× when not customised).
         const gs = getGameSettings(id);
-        if (gs.speed && gs.speed !== 1) applySpeedToEmulator(gs.speed);
+        // Defer slightly — gameManager wires the speed toggles after onGameStart fires.
+        setTimeout(() => applySpeedToEmulator(gs.speed ?? 1), 250);
       }
     };
 
@@ -434,13 +435,27 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   const pictureFilter = DISPLAY_MODE_FILTERS[activeDisplayMode];
   const shaderStyles = getShaderStyles(gameOverrides.shader ?? "off");
   const composedFilter = composeFilters(pictureFilter, shaderStyles.extraCanvasFilter);
-  const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
+  // Nudge the canvas down within the skin's screen rect so the picture sits
+  // closer to the bezel/logo (per design feedback). We trim a small slice off
+  // the top to keep the bottom edge anchored where the skin expects.
+  const nudgedRect = screenRect
+    ? (() => {
+        const nudge = Math.round(screenRect.height * 0.12);
+        return {
+          left: screenRect.left,
+          top: screenRect.top + nudge,
+          width: screenRect.width,
+          height: Math.max(1, screenRect.height - nudge),
+        };
+      })()
+    : null;
+  const canvasStyle: React.CSSProperties | undefined = skinUrl && nudgedRect
     ? {
         position: "fixed",
-        left: screenRect.left,
-        top: screenRect.top,
-        width: screenRect.width,
-        height: screenRect.height,
+        left: nudgedRect.left,
+        top: nudgedRect.top,
+        width: nudgedRect.width,
+        height: nudgedRect.height,
         zIndex: 5,
         filter: composedFilter,
       }
@@ -449,14 +464,14 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   // skin is active we pin it to the screen rect; otherwise it sits inside
   // the legacy stage and just stretches to fill it.
   const shaderOverlayPinned: React.CSSProperties | null =
-    shaderStyles.overlay && skinUrl && screenRect
+    shaderStyles.overlay && skinUrl && nudgedRect
       ? {
           ...shaderStyles.overlay,
           position: "fixed",
-          left: screenRect.left,
-          top: screenRect.top,
-          width: screenRect.width,
-          height: screenRect.height,
+          left: nudgedRect.left,
+          top: nudgedRect.top,
+          width: nudgedRect.width,
+          height: nudgedRect.height,
           zIndex: 6,
         }
       : null;
@@ -578,21 +593,37 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
         />
       )}
 
-      {/* Live FPS counter — fixed top-left under the header. Only mounts
-          while the game is actually running and the user has opted in. */}
-      {settings.showFps && started && <FpsCounter />}
+      {/* Top stats pill — FPS + current speed + hold indicator. Only mounts
+          while the game is running. FPS is gated by the user setting; the
+          other stats only appear when meaningful (≠1× or hold ON). */}
+      {started && (
+        <StatsPill
+          showFps={settings.showFps}
+          speed={speed}
+          holdMode={holdMode}
+        />
+      )}
     </div>
   );
 }
 
 /**
- * Lightweight requestAnimationFrame-based FPS meter. Renders a small
- * monospace pill in the top-left of the viewport. Updates ~once per second
- * to avoid distracting flicker.
+ * Compact stats pill anchored to the top-left under the header. Combines a
+ * live FPS readout with the current speed multiplier and hold-mode flag so
+ * the player can see session state at a glance without opening the menu.
  */
-function FpsCounter() {
+function StatsPill({
+  showFps,
+  speed,
+  holdMode,
+}: {
+  showFps: boolean;
+  speed: number;
+  holdMode: boolean;
+}) {
   const [fps, setFps] = useState(0);
   useEffect(() => {
+    if (!showFps) return;
     let raf = 0;
     let frames = 0;
     let last = performance.now();
@@ -608,14 +639,40 @@ function FpsCounter() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [showFps]);
+
+  const showSpeed = speed !== 1;
+  if (!showFps && !showSpeed && !holdMode) return null;
+
   return (
     <div
-      className="fixed left-2 z-40 px-2 py-1 rounded-md bg-background/70 backdrop-blur-sm border border-border/50 text-xs font-mono tabular-nums text-primary pointer-events-none"
+      className="fixed left-2 z-40 flex items-center gap-1 pointer-events-none"
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
-      aria-label={`${fps} frames per second`}
     >
-      {fps} FPS
+      {showFps && (
+        <span
+          className="px-2 py-1 rounded-md bg-background/70 backdrop-blur-sm border border-border/50 text-[11px] font-mono tabular-nums text-primary"
+          aria-label={`${fps} frames per second`}
+        >
+          {fps} FPS
+        </span>
+      )}
+      {showSpeed && (
+        <span
+          className="px-2 py-1 rounded-md bg-primary/20 backdrop-blur-sm border border-primary/40 text-[11px] font-display font-semibold text-primary"
+          aria-label={`Speed ${speed} times`}
+        >
+          {speed}×
+        </span>
+      )}
+      {holdMode && (
+        <span
+          className="px-2 py-1 rounded-md bg-accent/30 backdrop-blur-sm border border-accent/40 text-[11px] font-display font-semibold text-accent-foreground"
+          aria-label="Hold mode on"
+        >
+          HOLD
+        </span>
+      )}
     </div>
   );
 }
