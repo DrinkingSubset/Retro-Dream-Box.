@@ -143,11 +143,16 @@ export function useGamepad({ enabled, onInput }: GamepadOptions) {
       raf = requestAnimationFrame(tick);
     };
 
-    raf = requestAnimationFrame(tick);
+    // Kick off the loop only if a controller is already attached at mount.
+    const initial = navigator.getGamepads?.() ?? [];
+    if (initial.some((p) => p)) {
+      connectedCount = initial.filter((p) => p).length;
+      raf = requestAnimationFrame(tick);
+    }
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("gamepadconnected", onConnect);
-      window.removeEventListener("gamepaddisconnected", onDisconnect);
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("gamepadconnected", onConnectStart);
+      window.removeEventListener("gamepaddisconnected", onDisconnectStart);
       // Release any held buttons on teardown.
       prev.forEach((set) => set.forEach((btn) => onInputRef.current(btn, false)));
     };
