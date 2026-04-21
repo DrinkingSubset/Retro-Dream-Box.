@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { getGame, markPlayed, addPlayTime, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
+import SkinLayoutEditor from "@/components/SkinLayoutEditor";
 import SystemBadge from "@/components/SystemBadge";
 import PlayMenu, { applyCheatsToEmulator, applySpeedToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
@@ -12,6 +13,7 @@ import { getCheats } from "@/lib/cheatStore";
 import { useGamepad } from "@/hooks/useGamepad";
 import { useGameSettings, getGameSettings } from "@/lib/gameSettingsStore";
 import { getShaderStyles, composeFilters } from "@/lib/shaders";
+import { warmCore } from "@/lib/corePreload";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
@@ -649,10 +651,12 @@ function StatsPill({
   showFps,
   speed,
   holdMode,
+  anchorRect,
 }: {
   showFps: boolean;
   speed: number;
   holdMode: boolean;
+  anchorRect: { left: number; top: number; width: number; height: number } | null;
 }) {
   const [fps, setFps] = useState(0);
   useEffect(() => {
@@ -677,10 +681,27 @@ function StatsPill({
   const showSpeed = speed !== 1;
   if (!showFps && !showSpeed && !holdMode) return null;
 
+  // When a skin is active, sit just inside the top of the game-screen rect
+  // (so the FPS pill stays "within the skin's window" rather than floating
+  // up in the dead space under the header).
+  const positionStyle: React.CSSProperties = anchorRect
+    ? {
+        position: "fixed",
+        left: anchorRect.left + 6,
+        top: anchorRect.top + 6,
+        zIndex: 40,
+      }
+    : {
+        position: "fixed",
+        left: "0.5rem",
+        top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
+        zIndex: 40,
+      };
+
   return (
     <div
-      className="fixed left-2 z-40 flex items-center gap-1 pointer-events-none"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
+      className="flex items-center gap-1 pointer-events-none"
+      style={positionStyle}
     >
       {showFps && (
         <span
