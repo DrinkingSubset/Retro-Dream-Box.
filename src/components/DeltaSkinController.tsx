@@ -224,10 +224,33 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
 
   // Report the screen-slot rect (in viewport coordinates) to the parent so
   // it can position the EmulatorJS canvas exactly inside it.
+  //
+  // Portrait special-case: when the skin is aspect-locked to the bottom of
+  // the play area, there's typically a large empty band ABOVE the rendered
+  // skin (between the header and the top of the artwork). The skin's own
+  // tiny internal screen strip would waste all of that space — so instead
+  // we hand the entire empty band above the skin to the EJS canvas. Result:
+  // the game fills the top half of the screen, the skin sits flush below,
+  // exactly like a real handheld console.
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !onScreenRect || !skinRect.width) return;
     const c = el.getBoundingClientRect();
+
+    if (orientation === "portrait") {
+      const topBand = skinRect.top; // empty space above the rendered skin
+      if (topBand > 40) {
+        onScreenRect({
+          left: c.left,
+          top: c.top,
+          width: c.width,
+          height: topBand,
+        });
+        return;
+      }
+    }
+
+    // Landscape (or no empty top band): use the skin's internal screen rect.
     const sx = skinRect.width / rep.mappingWidth;
     const sy = skinRect.height / rep.mappingHeight;
     onScreenRect({
@@ -236,7 +259,7 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
       width: screenMappingRect.width * sx,
       height: screenMappingRect.height * sy,
     });
-  }, [size, skinRect, screenMappingRect, rep, onScreenRect]);
+  }, [size, skinRect, screenMappingRect, rep, onScreenRect, orientation]);
 
   // Convert a logical mappingSize coordinate to a CSS pixel offset within
   // the skin rect. This is the core of pixel-faithful hit-target mapping.
