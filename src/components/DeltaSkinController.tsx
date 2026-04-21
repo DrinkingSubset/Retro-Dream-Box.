@@ -14,6 +14,19 @@ const INPUT_MAP: Record<string, string> = {
   start: "START", select: "SELECT",
 };
 
+/**
+ * Hides emulator-helper hit regions (fastForward, quickSave, quickLoad)
+ * from the on-screen overlay — those actions live in the in-app menu now,
+ * so leaving the regions tappable just causes accidental fast-forwards.
+ * `menu` is kept because it opens the game menu sheet.
+ */
+function isUserActionable(item: SkinItem): boolean {
+  if (item.thumbstick) return true;
+  const names = Array.isArray(item.inputs) ? item.inputs : Object.values(item.inputs);
+  const skip = new Set(["fastForward", "quickSave", "quickLoad", "toggleFastForward"]);
+  return names.some((n) => !skip.has(n));
+}
+
 interface Props {
   /** URL of the .deltaskin file in /public/skins. */
   skinUrl: string;
