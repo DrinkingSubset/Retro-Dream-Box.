@@ -22,6 +22,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
+/**
+ * Returns true for items the player actually maps (D-pad, face buttons,
+ * shoulders, start/select, thumbstick). Filters out emulator helpers like
+ * `fastForward`, `quickSave`, `quickLoad`, and `menu` — those are exposed
+ * through the in-app menu, so dragging them around just clutters the editor.
+ */
+function isUserControl(item: SkinItem): boolean {
+  if (item.thumbstick) return true;
+  const names = Array.isArray(item.inputs) ? item.inputs : Object.values(item.inputs);
+  const skip = new Set(["fastForward", "quickSave", "quickLoad", "menu", "toggleFastForward"]);
+  return names.some((n) => !skip.has(n));
+}
+
 interface Props {
   skinUrl: string;
   orientation: "portrait" | "landscape";
@@ -200,7 +213,7 @@ function EditorCanvas({
           offset={layout[SCREEN_KEY] ?? { dx: 0, dy: 0, scale: 1 }}
           onChange={(off) => onChange(SCREEN_KEY, off)}
         />
-        {rep.items.map((item, idx) => (
+        {rep.items.filter(isUserControl).map((item, idx) => (
           <DraggableRegion
             key={idx}
             item={item}
