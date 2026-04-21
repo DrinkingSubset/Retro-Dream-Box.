@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2, Sparkles, Activity } from "lucide-react";
+import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2, Sparkles, Activity, Palette } from "lucide-react";
 import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, GBA_VARIANTS, DISPLAY_MODE_FILTERS, DISPLAY_MODE_LABELS, type SkinId, type PlayerId, type DisplayMode } from "@/lib/settingsStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import CustomSkinsManager from "@/components/CustomSkinsManager";
 
 const SKINS: SkinId[] = ["nes", "snes", "n64", "gbc", "gba", "ds"];
 const APP_ICONS = [
@@ -265,6 +266,11 @@ export default function Settings() {
               );
             })}
           </div>
+        </Section>
+
+        {/* Custom skins */}
+        <Section title="Custom Skins" subtitle="Upload your own .deltaskin files">
+          <CustomSkinsManager />
         </Section>
 
         {/* Audio & haptics */}
