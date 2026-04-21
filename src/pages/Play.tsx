@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
-import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord } from "@/lib/gameStore";
+import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
@@ -14,10 +14,10 @@ import { getCheats } from "@/lib/cheatStore";
 // gba   -> mGBA
 // gbc   -> Gambatte (handles both .gb and .gbc)
 // nes   -> FCEUmm
-const CORE_MAP: Record<string, string> = {
-  gba: "gba",
+const CORE_MAP: Record<SystemId, string> = {
+  gba: "mgba",
   gbc: "gambatte",
-  nes: "nes",
+  nes: "fceumm",
 };
 
 declare global {
@@ -327,6 +327,20 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || game?.system !== "gba" || orientation !== "landscape") return;
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+
+    const screenOrientation = window.screen.orientation;
+    const lock = screenOrientation?.lock?.bind(screenOrientation);
+    if (!lock) return;
+
+    lock("landscape").catch(() => {});
+    return () => {
+      screenOrientation.unlock?.();
+    };
+  }, [game?.system, orientation]);
 
   // Screen-slot rect (viewport coordinates) reported by DeltaSkinController.
   const [screenRect, setScreenRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
