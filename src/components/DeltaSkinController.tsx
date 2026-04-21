@@ -163,9 +163,10 @@ interface CanvasProps {
   onMenu?: () => void;
   opacity: number;
   onPress: () => void;
+  layout: SkinLayout;
 }
 
-function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, onPress }: CanvasProps) {
+function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, onPress, layout }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   /** [width, height] of the rendered skin area, in CSS pixels. */
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
