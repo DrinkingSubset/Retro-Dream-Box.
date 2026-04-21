@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2, Sparkles, Activity } from "lucide-react";
 import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, GBA_VARIANTS, DISPLAY_MODE_FILTERS, DISPLAY_MODE_LABELS, type SkinId, type PlayerId, type DisplayMode } from "@/lib/settingsStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
