@@ -20,14 +20,35 @@ interface Props {
   /** Called when the user wants to toggle the "hold buttons" mode in the parent. */
   onToggleHoldMode: () => void;
   holdMode: boolean;
+  /**
+   * When true, hides the built-in floating trigger button. The host is
+   * expected to open the menu via the `open` / `onOpenChange` props
+   * (e.g. by wiring it to the active skin's "menu" hit-region).
+   */
+  hideTrigger?: boolean;
+  /** Controlled open state. If omitted, the component manages its own state. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
  * Bottom-left floating menu button rendered on the Play screen.
  * Opens a sheet of options that act on `window.EJS_emulator`.
  */
-export default function PlayMenu({ gameId, onToggleHoldMode, holdMode }: Props) {
-  const [open, setOpen] = useState(false);
+export default function PlayMenu({
+  gameId,
+  onToggleHoldMode,
+  holdMode,
+  hideTrigger,
+  open: controlledOpen,
+  onOpenChange,
+}: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setInternalOpen(v);
+  };
   const [cheatsOpen, setCheatsOpen] = useState(false);
   const [fastForward, setFastForward] = useState(false);
 
@@ -113,14 +134,16 @@ export default function PlayMenu({ gameId, onToggleHoldMode, holdMode }: Props) 
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Game menu"
-        className="fixed bottom-3 left-3 z-40 w-11 h-11 rounded-full bg-background/70 backdrop-blur-md border border-border/60 shadow-elevated flex items-center justify-center text-foreground hover:bg-background/90 active:scale-95 transition"
-        style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      {!hideTrigger && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Game menu"
+          className="fixed bottom-3 left-3 z-40 w-11 h-11 rounded-full bg-background/70 backdrop-blur-md border border-border/60 shadow-elevated flex items-center justify-center text-foreground hover:bg-background/90 active:scale-95 transition"
+          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
