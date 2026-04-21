@@ -230,6 +230,7 @@ export default function PlayMenu({
 
           <div className="grid grid-cols-3 gap-1.5">
             <MenuTile icon={<Save className="w-4 h-4" />} label="Saves" onClick={() => { setOpen(false); setStatesOpen(true); }} />
+            <MenuTile icon={<Download className="w-4 h-4" />} label="Load last" onClick={quickLoad} />
             <MenuTile icon={<Sliders className="w-4 h-4" />} label="Game" onClick={() => { setOpen(false); setGameSettingsOpen(true); }} />
             <MenuTile icon={<Sparkles className="w-4 h-4" />} label="Cheats" onClick={() => { setOpen(false); setCheatsOpen(true); }} />
             <MenuTile icon={<Lock className="w-4 h-4" />} label={holdMode ? "Hold ✓" : "Hold"} onClick={handleHold} active={holdMode} />
