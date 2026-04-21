@@ -1,24 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Gamepad2, Sparkles, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { Search, Gamepad2, Sparkles, AlertCircle, Settings as SettingsIcon, Heart, Clock } from "lucide-react";
 import { GameMeta, listGames, SystemId, SYSTEM_LABELS } from "@/lib/gameStore";
 import GameCard from "@/components/GameCard";
 import UploadRomButton from "@/components/UploadRomButton";
 import SystemBadge from "@/components/SystemBadge";
 
-type Filter = "all" | SystemId;
+type Filter = "all" | "favorites" | SystemId;
 
 const TABS: { id: Filter; label: string }[] = [
   { id: "all", label: "All Games" },
+  { id: "favorites", label: "Favorites" },
   { id: "gba", label: "GBA" },
   { id: "gbc", label: "GBC" },
   { id: "nes", label: "NES" },
 ];
 
+const CONTINUE_LIMIT = 8;
+
 export default function Library() {
   const navigate = useNavigate();
   const [games, setGames] = useState<GameMeta[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
+  const [collection, setCollection] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -29,21 +33,43 @@ export default function Library() {
     });
   }, []);
 
+  // Continue Playing: most recently played, excluding never-played games.
+  const continuePlaying = useMemo(
+    () =>
+      games
+        .filter((g) => g.lastPlayedAt)
+        .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
+        .slice(0, CONTINUE_LIMIT),
+    [games],
+  );
+
+  // All distinct collection tags across the library.
+  const allCollections = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of games) for (const c of g.collections ?? []) set.add(c);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [games]);
+
   const filtered = useMemo(() => {
     return games.filter((g) => {
-      if (filter !== "all" && g.system !== filter) return false;
+      if (filter === "favorites" && !g.favorite) return false;
+      if (filter !== "all" && filter !== "favorites" && g.system !== filter) return false;
+      if (collection && !(g.collections ?? []).includes(collection)) return false;
       if (query && !g.name.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [games, filter, query]);
+  }, [games, filter, collection, query]);
 
   const refresh = async () => setGames(await listGames());
 
   const handlePlay = (g: GameMeta) => navigate(`/play/${g.id}`);
 
   const counts = useMemo(() => {
-    const c = { all: games.length, gba: 0, gbc: 0, nes: 0 } as Record<Filter, number>;
-    games.forEach((g) => (c[g.system] += 1));
+    const c = { all: games.length, favorites: 0, gba: 0, gbc: 0, nes: 0 } as Record<Filter, number>;
+    games.forEach((g) => {
+      c[g.system] += 1;
+      if (g.favorite) c.favorites += 1;
+    });
     return c;
   }, [games]);
 
@@ -96,8 +122,49 @@ export default function Library() {
       </header>
 
       <main className="container pt-10">
+        {/* Continue Playing carousel — only shown when at least one game has
+            been played and we're in the default view. */}
+        {!loading && continuePlaying.length > 0 && filter === "all" && !collection && !query && (
+          <section className="mb-10 animate-fade-up">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 text-primary-glow" />
+              <h3 className="font-display text-lg font-semibold">Continue Playing</h3>
+            </div>
+            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory">
+              {continuePlaying.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => handlePlay(g)}
+                  className="snap-start shrink-0 w-36 sm:w-40 group text-left"
+                >
+                  <div className="relative aspect-square rounded-2xl overflow-hidden ring-1 ring-border/50 group-hover:ring-primary/60 transition-all shadow-card group-hover:shadow-elevated">
+                    {g.artworkDataUrl ? (
+                      <img src={g.artworkDataUrl} alt={`${g.name} cover`} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className={`absolute inset-0 ${g.system === "gba" ? "bg-gradient-gba" : g.system === "gbc" ? "bg-gradient-gbc" : "bg-gradient-nes"}`} />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                    <div className="absolute top-2 left-2">
+                      <SystemBadge system={g.system} size="sm" />
+                    </div>
+                    {g.favorite && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                        <Heart className="w-3 h-3 fill-destructive text-destructive" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm font-display font-semibold truncate">{g.name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {g.playCount}× played
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Tabs + search */}
-        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between mb-8">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between mb-6">
           <div className="flex gap-1.5 p-1.5 rounded-full glass overflow-x-auto scrollbar-hide">
             {TABS.map((t) => {
               const active = filter === t.id;
@@ -105,14 +172,15 @@ export default function Library() {
                 <button
                   key={t.id}
                   onClick={() => setFilter(t.id)}
-                  className={`relative px-4 py-2 rounded-full font-display text-sm font-semibold transition-all whitespace-nowrap ${
+                  className={`relative px-4 py-2 rounded-full font-display text-sm font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 ${
                     active
                       ? "bg-gradient-primary text-primary-foreground shadow-glow"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
+                  {t.id === "favorites" && <Heart className={`w-3.5 h-3.5 ${active ? "fill-current" : ""}`} />}
                   {t.label}
-                  <span className={`ml-2 text-xs ${active ? "opacity-90" : "opacity-60"}`}>
+                  <span className={`text-xs ${active ? "opacity-90" : "opacity-60"}`}>
                     {counts[t.id]}
                   </span>
                 </button>
@@ -131,7 +199,36 @@ export default function Library() {
           </div>
         </div>
 
-        {/* Content — extra column at md (Z Fold unfolded ~968px) */}
+        {/* Collection chips */}
+        {allCollections.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            <button
+              onClick={() => setCollection(null)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                collection === null
+                  ? "bg-primary/20 text-primary border border-primary/40"
+                  : "bg-secondary/40 text-muted-foreground border border-border/50 hover:text-foreground"
+              }`}
+            >
+              All collections
+            </button>
+            {allCollections.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCollection(c === collection ? null : c)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  collection === c
+                    ? "bg-primary/20 text-primary border border-primary/40"
+                    : "bg-secondary/40 text-muted-foreground border border-border/50 hover:text-foreground"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Content */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-5">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -178,14 +275,28 @@ function EmptyState({
   onAdded: () => void;
 }) {
   if (hasGames) {
+    const label =
+      filter === "all"
+        ? "your library"
+        : filter === "favorites"
+        ? "your favorites"
+        : SYSTEM_LABELS[filter as SystemId];
     return (
       <div className="text-center py-20">
         <div className="inline-flex w-16 h-16 rounded-2xl bg-secondary items-center justify-center mb-4">
-          <Search className="w-7 h-7 text-muted-foreground" />
+          {filter === "favorites" ? (
+            <Heart className="w-7 h-7 text-muted-foreground" />
+          ) : (
+            <Search className="w-7 h-7 text-muted-foreground" />
+          )}
         </div>
-        <h3 className="font-display text-xl font-semibold mb-2">No matches</h3>
+        <h3 className="font-display text-xl font-semibold mb-2">
+          {filter === "favorites" ? "No favorites yet" : "No matches"}
+        </h3>
         <p className="text-muted-foreground">
-          Nothing in {filter === "all" ? "your library" : SYSTEM_LABELS[filter as SystemId]} matches that search.
+          {filter === "favorites"
+            ? "Long-press any game and choose Add to favorites to pin it here."
+            : `Nothing in ${label} matches that search.`}
         </p>
       </div>
     );
