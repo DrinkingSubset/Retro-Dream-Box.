@@ -29,8 +29,44 @@ export default function GameContextMenu({ game, children, onChanged }: Props) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [artworkOpen, setArtworkOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [collectionsOpen, setCollectionsOpen] = useState(false);
+  const [collectionsText, setCollectionsText] = useState((game.collections ?? []).join(", "));
   const [name, setName] = useState(game.name);
+  const [fetchingArt, setFetchingArt] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleToggleFavorite = async () => {
+    const fav = await toggleFavorite(game.id);
+    onChanged();
+    toast.success(fav ? "Added to favorites" : "Removed from favorites");
+  };
+
+  const handleSaveCollections = async () => {
+    const list = collectionsText.split(",").map((s) => s.trim()).filter(Boolean);
+    await setCollections(game.id, list);
+    setCollectionsOpen(false);
+    onChanged();
+    toast.success("Collections updated");
+  };
+
+  const handleFetchBoxArt = async () => {
+    setFetchingArt(true);
+    try {
+      const dataUrl = await fetchBoxArtAsDataUrl(game.name, game.system);
+      if (!dataUrl) {
+        toast.error("No matching box art found");
+      } else {
+        await setArtwork(game.id, dataUrl);
+        onChanged();
+        toast.success("Box art downloaded");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to fetch box art");
+    } finally {
+      setFetchingArt(false);
+      setArtworkOpen(false);
+    }
+  };
 
   const handleRename = async () => {
     await renameGame(game.id, name);
@@ -99,6 +135,13 @@ export default function GameContextMenu({ game, children, onChanged }: Props) {
         <ContextMenuContent className="w-56">
           <ContextMenuItem onSelect={() => window.open(`/play/${game.id}`, "_blank")}>
             <ExternalLink className="w-4 h-4" /> Open in new window
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={handleToggleFavorite}>
+            <Heart className={`w-4 h-4 ${game.favorite ? "fill-current text-red-500" : ""}`} />
+            {game.favorite ? "Unfavorite" : "Add to favorites"}
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => setCollectionsOpen(true)}>
+            <Tag className="w-4 h-4" /> Collections…
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => setRenameOpen(true)}>
             <Pencil className="w-4 h-4" /> Rename
