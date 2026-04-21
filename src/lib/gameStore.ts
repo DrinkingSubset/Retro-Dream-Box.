@@ -169,11 +169,20 @@ function metaOf(g: GameRecord): GameMeta {
 }
 
 export async function listGames(): Promise<GameMeta[]> {
+  // Iterate via cursor and project to GameMeta in-flight so we never hold
+  // every ROM ArrayBuffer in memory at once. With a 50-game library this
+  // changes peak memory from ~hundreds of MB to a few hundred KB.
   const db = await getDb();
-  const all = (await db.getAll(STORE)) as GameRecord[];
-  return all
-    .map(metaOf)
-    .sort((a, b) => (b.lastPlayedAt ?? b.addedAt) - (a.lastPlayedAt ?? a.addedAt));
+  const tx = db.transaction(STORE, "readonly");
+  const metas: GameMeta[] = [];
+  let cursor = await tx.store.openCursor();
+  while (cursor) {
+    const g = cursor.value as GameRecord;
+    metas.push(metaOf(g));
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return metas.sort((a, b) => (b.lastPlayedAt ?? b.addedAt) - (a.lastPlayedAt ?? a.addedAt));
 }
 
 export async function getGame(id: string): Promise<GameRecord | undefined> {

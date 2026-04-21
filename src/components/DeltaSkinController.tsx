@@ -84,10 +84,56 @@ export default function DeltaSkinController({
     return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
   }
 
-  const rep = pickRepresentation(skin, orientation, {
+  return (
+    <SkinCanvasWrapper
+      skin={skin}
+      orientation={orientation}
+      onInput={onInput}
+      onScreenRect={onScreenRect}
+      onMenu={onMenu}
+      opacity={opacity}
+      settings={settings}
+    />
+  );
+}
+
+/**
+ * Wraps SkinCanvas with a memoized representation that updates only when
+ * orientation or viewport changes — avoids re-picking the rep on every
+ * parent render.
+ */
+function SkinCanvasWrapper({
+  skin,
+  orientation,
+  onInput,
+  onScreenRect,
+  onMenu,
+  opacity,
+  settings,
+}: {
+  skin: ParsedSkin;
+  orientation: "portrait" | "landscape";
+  onInput: (button: string, pressed: boolean) => void;
+  onScreenRect?: (rect: { left: number; top: number; width: number; height: number } | null) => void;
+  onMenu?: () => void;
+  opacity: number;
+  settings: ReturnType<typeof useSettings>;
+}) {
+  const [viewport, setViewport] = useState(() => ({
     width: typeof window !== "undefined" ? window.innerWidth : 390,
     height: typeof window !== "undefined" ? window.innerHeight : 844,
-  });
+  }));
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const rep = useMemo(
+    () => pickRepresentation(skin, orientation, viewport),
+    [skin, orientation, viewport],
+  );
+  const onPress = useCallback(() => triggerHaptic(settings), [settings]);
 
   return (
     <SkinCanvas
@@ -97,7 +143,7 @@ export default function DeltaSkinController({
       onScreenRect={onScreenRect}
       onMenu={onMenu}
       opacity={opacity}
-      onPress={() => triggerHaptic(settings)}
+      onPress={onPress}
     />
   );
 }
@@ -122,15 +168,28 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
 
   // Observe container size so we can fit the skin into the available space
   // while keeping its aspect ratio identical to the original info.json layout.
+  // The setSize call is deferred to the next animation frame so we never
+  // trigger React work synchronously inside the ResizeObserver callback —
+  // that pattern produces the noisy "ResizeObserver loop completed with
+  // undelivered notifications" warning in dev tools.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    let raf = 0;
     const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      setSize({ w: r.width, h: r.height });
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        setSize((prev) =>
+          prev.w === r.width && prev.h === r.height ? prev : { w: r.width, h: r.height },
+        );
+      });
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, []);
 
   // Compute the actual rendered skin rect inside the container — keeping
