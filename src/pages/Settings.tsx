@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import CustomSkinsManager from "@/components/CustomSkinsManager";
+import CloudSyncSection from "@/components/CloudSyncSection";
 
 const SKINS: SkinId[] = ["nes", "snes", "n64", "gbc", "gba", "ds"];
 const APP_ICONS = [
@@ -43,6 +44,11 @@ export default function Settings() {
       </header>
 
       <main className="container max-w-3xl pt-6 sm:pt-10 space-y-8">
+        {/* Cloud sync */}
+        <Section title="Cloud sync" subtitle="Back up battery saves and save states across devices">
+          <CloudSyncSection />
+        </Section>
+
         {/* Controllers */}
         <Section title="Controllers" subtitle="Customize each player's on-screen controls">
           <Tabs value={String(activePlayer)} onValueChange={(v) => setActivePlayer(Number(v) as PlayerId)}>
