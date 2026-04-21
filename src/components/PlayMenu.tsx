@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus, Sliders, Video, Square } from "lucide-react";
+import { Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus, Sliders, Video, Square, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { getCheats, saveCheats, normaliseCheatCode, type Cheat } from "@/lib/cheatStore";
+import { listSlots, readSlot, type SaveSlot } from "@/lib/saveStateStore";
 import SaveStatesDialog from "@/components/SaveStatesDialog";
 import GameSettingsDialog from "@/components/GameSettingsDialog";
 import { startCanvasRecording, type ActiveRecording } from "@/lib/canvasRecorder";
@@ -141,6 +142,38 @@ export default function PlayMenu({
     setOpen(false);
   };
 
+  /**
+   * Quick-load: restore the most-recently-saved state across all 9 slots,
+   * so the user can resume from their latest checkpoint without picking
+   * one out of the grid.
+   */
+  const quickLoad = async () => {
+    try {
+      const e = emu();
+      if (!e?.gameManager?.loadState) throw new Error("Emulator not ready");
+      const slots = await listSlots(gameId);
+      let latest: { slot: SaveSlot; savedAt: number } | null = null;
+      for (const [slotKey, meta] of Object.entries(slots)) {
+        if (!meta) continue;
+        if (!latest || meta.savedAt > latest.savedAt) {
+          latest = { slot: Number(slotKey), savedAt: meta.savedAt };
+        }
+      }
+      if (!latest) {
+        toast({ title: "No save states yet", description: "Save a state first, then Load will resume it." });
+        setOpen(false);
+        return;
+      }
+      const buf = await readSlot(gameId, latest.slot);
+      if (!buf) throw new Error("Slot data missing");
+      e.gameManager.loadState(new Uint8Array(buf));
+      toast({ title: `Loaded slot ${latest.slot}`, description: "Resumed from your latest save." });
+    } catch (err: any) {
+      toast({ title: "Load failed", description: err?.message, variant: "destructive" });
+    }
+    setOpen(false);
+  };
+
   return (
     <>
       {!hideTrigger && (
@@ -197,6 +230,7 @@ export default function PlayMenu({
 
           <div className="grid grid-cols-3 gap-1.5">
             <MenuTile icon={<Save className="w-4 h-4" />} label="Saves" onClick={() => { setOpen(false); setStatesOpen(true); }} />
+            <MenuTile icon={<Download className="w-4 h-4" />} label="Load last" onClick={quickLoad} />
             <MenuTile icon={<Sliders className="w-4 h-4" />} label="Game" onClick={() => { setOpen(false); setGameSettingsOpen(true); }} />
             <MenuTile icon={<Sparkles className="w-4 h-4" />} label="Cheats" onClick={() => { setOpen(false); setCheatsOpen(true); }} />
             <MenuTile icon={<Lock className="w-4 h-4" />} label={holdMode ? "Hold ✓" : "Hold"} onClick={handleHold} active={holdMode} />

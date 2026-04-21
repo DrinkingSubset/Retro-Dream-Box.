@@ -5,13 +5,13 @@
 import { useState } from "react";
 import { Sliders, RotateCcw, X } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -52,16 +52,20 @@ export default function GameSettingsDialog({ gameId, system, open, onOpenChange 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sliders className="w-5 h-5" /> This game
-          </DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="rounded-t-2xl border-t border-border/60 bg-background/95 backdrop-blur-xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto"
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/30" />
+        <SheetHeader className="text-left mb-3">
+          <SheetTitle className="flex items-center gap-2 text-base">
+            <Sliders className="w-4 h-4" /> This game
+          </SheetTitle>
+          <SheetDescription className="text-xs">
             Settings here only apply to this ROM. Leave anything unset to use your global defaults.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         <div className="space-y-5">
           {/* Custom skin override */}
@@ -189,15 +193,15 @@ export default function GameSettingsDialog({ gameId, system, open, onOpenChange 
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <SheetFooter className="gap-2 mt-4 flex-row">
           <Button variant="ghost" size="sm" onClick={reset}>
             <RotateCcw className="w-4 h-4" /> Reset
           </Button>
           <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4" /> Close
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
