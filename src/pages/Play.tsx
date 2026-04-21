@@ -435,13 +435,27 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   const pictureFilter = DISPLAY_MODE_FILTERS[activeDisplayMode];
   const shaderStyles = getShaderStyles(gameOverrides.shader ?? "off");
   const composedFilter = composeFilters(pictureFilter, shaderStyles.extraCanvasFilter);
-  const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
+  // Nudge the canvas down within the skin's screen rect so the picture sits
+  // closer to the bezel/logo (per design feedback). We trim a small slice off
+  // the top to keep the bottom edge anchored where the skin expects.
+  const nudgedRect = screenRect
+    ? (() => {
+        const nudge = Math.round(screenRect.height * 0.12);
+        return {
+          left: screenRect.left,
+          top: screenRect.top + nudge,
+          width: screenRect.width,
+          height: Math.max(1, screenRect.height - nudge),
+        };
+      })()
+    : null;
+  const canvasStyle: React.CSSProperties | undefined = skinUrl && nudgedRect
     ? {
         position: "fixed",
-        left: screenRect.left,
-        top: screenRect.top,
-        width: screenRect.width,
-        height: screenRect.height,
+        left: nudgedRect.left,
+        top: nudgedRect.top,
+        width: nudgedRect.width,
+        height: nudgedRect.height,
         zIndex: 5,
         filter: composedFilter,
       }
@@ -450,14 +464,14 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   // skin is active we pin it to the screen rect; otherwise it sits inside
   // the legacy stage and just stretches to fill it.
   const shaderOverlayPinned: React.CSSProperties | null =
-    shaderStyles.overlay && skinUrl && screenRect
+    shaderStyles.overlay && skinUrl && nudgedRect
       ? {
           ...shaderStyles.overlay,
           position: "fixed",
-          left: screenRect.left,
-          top: screenRect.top,
-          width: screenRect.width,
-          height: screenRect.height,
+          left: nudgedRect.left,
+          top: nudgedRect.top,
+          width: nudgedRect.width,
+          height: nudgedRect.height,
           zIndex: 6,
         }
       : null;
