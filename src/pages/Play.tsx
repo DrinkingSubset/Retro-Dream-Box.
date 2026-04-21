@@ -7,7 +7,7 @@ import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
 import PlayMenu, { applyCheatsToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
-import { useSettings } from "@/lib/settingsStore";
+import { useSettings, DISPLAY_MODE_FILTERS } from "@/lib/settingsStore";
 import { getCheats } from "@/lib/cheatStore";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
@@ -339,6 +339,9 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
 
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
+  // The CSS `filter` enriches the picture per the user's display profile —
+  // works because EJS draws to a <canvas> child of #emu-game.
+  const pictureFilter = DISPLAY_MODE_FILTERS[settings.displayMode];
   const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
     ? {
         position: "fixed",
@@ -347,6 +350,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
         width: screenRect.width,
         height: screenRect.height,
         zIndex: 5,
+        filter: pictureFilter,
       }
     : undefined;
 
