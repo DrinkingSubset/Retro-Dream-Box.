@@ -201,7 +201,12 @@ export default function GameContextMenu({ game, children, onChanged }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <ArtworkOption icon={<Clipboard className="w-5 h-5" />} label="Clipboard" onClick={handleClipboard} />
             <ArtworkOption icon={<ImageIcon className="w-5 h-5" />} label="Photo Library" onClick={() => fileRef.current?.click()} />
-            <ArtworkOption icon={<Database className="w-5 h-5" />} label="Game Database" onClick={() => toast.info("Game database lookup — coming soon")} />
+            <ArtworkOption
+              icon={fetchingArt ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
+              label={fetchingArt ? "Searching…" : "Game Database"}
+              onClick={handleFetchBoxArt}
+              disabled={fetchingArt}
+            />
             <ArtworkOption icon={<FolderOpen className="w-5 h-5" />} label="Files" onClick={() => fileRef.current?.click()} />
           </div>
           {game.artworkDataUrl && (
@@ -247,15 +252,40 @@ export default function GameContextMenu({ game, children, onChanged }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Collections */}
+      <Dialog open={collectionsOpen} onOpenChange={setCollectionsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Collections</DialogTitle>
+            <DialogDescription>
+              Group {game.name} into collections. Separate multiple names with commas
+              (e.g. <em>Pokémon, Finished, Hard Mode</em>).
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={collectionsText}
+            onChange={(e) => setCollectionsText(e.target.value)}
+            placeholder="Pokémon, Finished, RPG"
+            autoFocus
+            onKeyDown={(e) => e.key === "Enter" && handleSaveCollections()}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCollectionsOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveCollections}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
-function ArtworkOption({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+function ArtworkOption({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-border/50 hover:border-primary/60 hover:bg-primary/5 transition-colors"
+      disabled={disabled}
+      className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-border/50 hover:border-primary/60 hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <div className="w-10 h-10 rounded-xl bg-secondary/60 flex items-center justify-center text-primary">
         {icon}
