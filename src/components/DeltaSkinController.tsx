@@ -368,7 +368,7 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
           pointerEvents: "none",
         }}
       >
-        {rep.items.map((item, idx) => (
+        {rep.items.filter(isUserActionable).map((item, idx) => (
           <HitRegion
             key={idx}
             item={item}
