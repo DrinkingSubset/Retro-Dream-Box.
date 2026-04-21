@@ -5,6 +5,7 @@ import { GameMeta, listGames, SystemId, SYSTEM_LABELS } from "@/lib/gameStore";
 import GameCard from "@/components/GameCard";
 import UploadRomButton from "@/components/UploadRomButton";
 import SystemBadge from "@/components/SystemBadge";
+import UserMenu from "@/components/UserMenu";
 
 type Filter = "all" | "favorites" | SystemId;
 
@@ -92,13 +93,16 @@ export default function Library() {
                 <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold leading-none">Your Library</h1>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/settings")}
-              aria-label="Settings"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full glass hover:bg-secondary/80 flex items-center justify-center transition-colors shrink-0"
-            >
-              <SettingsIcon className="w-5 h-5 text-foreground/80" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <UserMenu />
+              <button
+                onClick={() => navigate("/settings")}
+                aria-label="Settings"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full glass hover:bg-secondary/80 flex items-center justify-center transition-colors"
+              >
+                <SettingsIcon className="w-5 h-5 text-foreground/80" />
+              </button>
+            </div>
           </div>
 
           <div className="max-w-2xl mb-6 sm:mb-8 animate-fade-up">

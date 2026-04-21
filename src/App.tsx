@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import Play from "./pages/Play.tsx";
 import Settings from "./pages/Settings.tsx";
+import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { preloadEmulatorCores } from "@/lib/corePreload";
 
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="/" element={<Index />} />
           <Route path="/play/:id" element={<Play />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
