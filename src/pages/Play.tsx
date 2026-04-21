@@ -14,6 +14,7 @@ import { useGamepad } from "@/hooks/useGamepad";
 import { useGameSettings, getGameSettings } from "@/lib/gameSettingsStore";
 import { getShaderStyles, composeFilters } from "@/lib/shaders";
 import { warmCore } from "@/lib/corePreload";
+import { useSkinLayout, SCREEN_KEY } from "@/lib/skinLayoutStore";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
