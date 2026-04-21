@@ -17,6 +17,7 @@ import * as pdfjs from "pdfjs-dist";
 // Vite-bundled PDF.js worker. The `?url` suffix gives us a static URL.
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { get as idbGet, set as idbSet, createStore } from "idb-keyval";
+import { resolveCustomSkinUrl, CUSTOM_SKIN_PREFIX } from "@/lib/customSkinStore";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -243,7 +244,15 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
       // IndexedDB unavailable — fall through to network.
     }
 
-    const res = await fetch(url);
+    // Custom user-uploaded skins live in IndexedDB; resolve to a Blob URL
+    // before the fetch. For built-in skins this is a no-op.
+    let fetchUrl = url;
+    if (url.startsWith(CUSTOM_SKIN_PREFIX)) {
+      const blobUrl = await resolveCustomSkinUrl(url);
+      if (!blobUrl) throw new Error("Custom skin not found in storage");
+      fetchUrl = blobUrl;
+    }
+    const res = await fetch(fetchUrl);
     if (!res.ok) throw new Error(`Skin fetch failed: ${res.status}`);
     const buf = await res.arrayBuffer();
     const zip = await JSZip.loadAsync(buf);

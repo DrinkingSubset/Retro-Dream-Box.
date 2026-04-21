@@ -8,6 +8,7 @@
  */
 import type { SystemId } from "@/lib/gameStore";
 import type { GbcVariantId, GbaVariantId } from "@/lib/settingsStore";
+import { CUSTOM_SKIN_PREFIX } from "@/lib/customSkinStore";
 
 export interface SkinRegistryEntry {
   url: string | null;
@@ -45,11 +46,21 @@ export const DEFAULT_DELTASKIN_URL: Partial<Record<SystemId, string>> = {
   gbc: GBC_SKIN_URLS["default"],
 };
 
+/**
+ * Resolve the active skin URL for a system.
+ *
+ * Resolution order:
+ *   1. `customSkinId` — a user-uploaded skin chosen for this specific game.
+ *   2. The built-in colour variant for the current player.
+ *   3. The system's default skin.
+ */
 export function getSkinUrlForSystem(
   system: SystemId,
   gbcVariant: GbcVariantId,
   gbaVariant: GbaVariantId = "atomic-purple",
+  customSkinId?: string,
 ): string | null {
+  if (customSkinId) return `${CUSTOM_SKIN_PREFIX}${customSkinId}`;
   if (system === "gbc") return GBC_SKIN_URLS[gbcVariant] ?? GBC_SKIN_URLS["default"];
   if (system === "gba") return GBA_SKIN_URLS[gbaVariant] ?? GBA_SKIN_URLS["atomic-purple"];
   return DEFAULT_DELTASKIN_URL[system] ?? null;
