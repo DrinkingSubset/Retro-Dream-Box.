@@ -269,6 +269,11 @@ export default function Play() {
     heldRef.current.clear();
   }, [holdMode]);
 
+  // Wire up physical gamepads (Web Gamepad API). Active whenever a game
+  // is loaded — gamepad input flows through the same `sendInput` handler
+  // as the on-screen controls, so hold-mode etc. all "just work".
+  useGamepad({ enabled: !!game, onInput: sendInput });
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
