@@ -114,6 +114,7 @@ function SkinCanvasWrapper({
   onMenu,
   opacity,
   settings,
+  layout,
 }: {
   skin: ParsedSkin;
   orientation: "portrait" | "landscape";
@@ -122,6 +123,7 @@ function SkinCanvasWrapper({
   onMenu?: () => void;
   opacity: number;
   settings: ReturnType<typeof useSettings>;
+  layout: SkinLayout;
 }) {
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== "undefined" ? window.innerWidth : 390,
@@ -148,6 +150,7 @@ function SkinCanvasWrapper({
       onMenu={onMenu}
       opacity={opacity}
       onPress={onPress}
+      layout={layout}
     />
   );
 }
