@@ -155,24 +155,46 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
   }, [size, aspect, orientation]);
 
   // Compute the game-screen rect within the skin's mappingSize coordinate
-  // system. Most Delta skins don't include an explicit `screens` field, so
-  // we infer it from the empty space inside the items' bounding box:
-  //   - Landscape: items hug the left and right edges → screen sits in the
-  //     horizontal gap between them.
-  //   - Portrait: items are clustered at the bottom → screen fills the
-  //     space above them (full width).
+  // system. Priority:
+  //   1. Use the skin's explicit `screens[].outputFrame` if provided
+  //      (edgeToEdge variants of recent skins include this).
+  //   2. Otherwise infer from the bounding box of the *control* items
+  //      (D-pad, A, B, L, R, Start, Select). Non-control items like
+  //      quickSave / quickLoad / fastForward / menu sit on top of artwork
+  //      and must NOT be used to bound the screen, or we end up with a
+  //      tiny screen wedged into the corner (the bug we just fixed).
   const screenMappingRect = useMemo(() => {
-    const items = rep.items;
-    if (items.length === 0) {
+    // 1. Explicit screen rect from the skin author.
+    if (rep.screens && rep.screens.length > 0) {
+      const f = rep.screens[0].outputFrame;
+      return { x: f.x, y: f.y, width: f.width, height: f.height };
+    }
+
+    // 2. Infer from real controls only.
+    const CONTROL_INPUTS = new Set([
+      "up", "down", "left", "right",
+      "a", "b", "x", "y",
+      "l", "r", "l2", "r2",
+      "start", "select", "thumbstick",
+    ]);
+    const isControl = (it: SkinItem) => {
+      if (it.thumbstick) return true;
+      const inputs = Array.isArray(it.inputs)
+        ? it.inputs
+        : Object.values(it.inputs);
+      return inputs.some((i) => CONTROL_INPUTS.has(String(i).toLowerCase()));
+    };
+    const controls = rep.items.filter(isControl);
+    if (controls.length === 0) {
       return { x: 0, y: 0, width: rep.mappingWidth, height: rep.mappingHeight };
     }
 
     if (orientation === "landscape") {
-      // Find the gap between left-cluster and right-cluster items.
+      // Find the gap between left-cluster and right-cluster controls.
       const half = rep.mappingWidth / 2;
       let leftEdge = 0;
       let rightEdge = rep.mappingWidth;
-      for (const it of items) {
+      for (const it of controls) {
         const cx = it.frame.x + it.frame.width / 2;
         if (cx < half) {
           leftEdge = Math.max(leftEdge, it.frame.x + it.frame.width);
@@ -189,8 +211,8 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
       };
     }
 
-    // Portrait: screen sits above all items.
-    const minY = Math.min(...items.map((i) => i.frame.y));
+    // Portrait: screen sits above all controls.
+    const minY = Math.min(...controls.map((i) => i.frame.y));
     const pad = rep.mappingHeight * 0.01;
     return {
       x: 0,

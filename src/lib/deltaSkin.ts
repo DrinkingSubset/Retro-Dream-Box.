@@ -25,8 +25,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
  * Key: `${skinUrl}::${orientation}` → cached PNG data URL + metadata.
  * This avoids re-rasterising the same PDF every time a game opens.
  */
-const SKIN_CACHE_VERSION = 2;
-const skinStore = createStore("delta-skin-cache", "rendered-v2");
+const SKIN_CACHE_VERSION = 3;
+const skinStore = createStore("delta-skin-cache", "rendered-v3");
 
 interface CachedRep {
   v: number;
@@ -66,9 +66,18 @@ export interface SkinItem {
   thumbstick?: { name: string; width: number; height: number };
 }
 
+export interface SkinScreen {
+  /** Source rect in the emulator framebuffer. We don't use this — EJS handles it. */
+  inputFrame?: SkinFrame;
+  /** Where the game screen should appear, in mappingSize coordinates. */
+  outputFrame: SkinFrame;
+}
+
 export interface SkinRepresentation {
   assets: { resizable?: string; small?: string; medium?: string; large?: string };
   items: SkinItem[];
+  /** Optional explicit screen placement(s). When present, infer logic is skipped. */
+  screens?: SkinScreen[];
   mappingSize: { width: number; height: number };
   extendedEdges?: SkinExtendedEdges;
   translucent?: boolean;
@@ -96,6 +105,7 @@ export interface RenderedRepresentation {
   mappingWidth: number;
   mappingHeight: number;
   items: SkinItem[];
+  screens?: SkinScreen[];
   extendedEdges?: SkinExtendedEdges;
   translucent: boolean;
 }
@@ -214,6 +224,7 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
         mappingWidth: rep.mappingSize.width,
         mappingHeight: rep.mappingSize.height,
         items: rep.items,
+        screens: rep.screens,
         extendedEdges: rep.extendedEdges,
         translucent: !!rep.translucent,
       };
