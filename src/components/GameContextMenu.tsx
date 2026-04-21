@@ -137,7 +137,7 @@ export default function GameContextMenu({ game, children, onChanged }: Props) {
             <ExternalLink className="w-4 h-4" /> Open in new window
           </ContextMenuItem>
           <ContextMenuItem onSelect={handleToggleFavorite}>
-            <Heart className={`w-4 h-4 ${game.favorite ? "fill-current text-red-500" : ""}`} />
+            <Heart className={`w-4 h-4 ${game.favorite ? "fill-current text-destructive" : ""}`} />
             {game.favorite ? "Unfavorite" : "Add to favorites"}
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => setCollectionsOpen(true)}>
