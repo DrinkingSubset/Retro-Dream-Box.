@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { loadDeltaSkin, expandInputs, pickRepresentation, type ParsedSkin, type RenderedRepresentation, type SkinItem } from "@/lib/deltaSkin";
 import { useSettings, triggerHaptic } from "@/lib/settingsStore";
+import { useSkinLayout, inputKeyForItem, type SkinLayout } from "@/lib/skinLayoutStore";
 
 /**
  * Maps Delta input names → the canonical button strings that Play.tsx
