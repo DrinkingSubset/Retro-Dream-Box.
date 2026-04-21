@@ -371,17 +371,44 @@ export function applyCheatsToEmulator(cheats: Cheat[]) {
 export function applySpeedToEmulator(speed: number) {
   const e = (window as any).EJS_emulator;
   if (!e) return;
+  const gm = e.gameManager;
+  // EmulatorJS gates fast-forward / slow-motion behind boolean toggles.
+  // Setting only the ratio has no effect unless the corresponding mode is
+  // enabled. Always disable both first, then enable + set the ratio for the
+  // desired mode.
+  const setFFRatio = (r: number) => {
+    if (gm?.setFastForwardRatio) gm.setFastForwardRatio(r);
+    else if (e.setFastForwardRatio) e.setFastForwardRatio(r);
+  };
+  const setSMRatio = (r: number) => {
+    if (gm?.setSlowMotionRatio) gm.setSlowMotionRatio(r);
+    else if (e.setSlowMotionRatio) e.setSlowMotionRatio(r);
+  };
+  const toggleFF = (on: boolean) => {
+    try { gm?.toggleFastForward?.(on ? 1 : 0); } catch { /* ignore */ }
+    try { e.toggleFastForward?.(on ? 1 : 0); } catch { /* ignore */ }
+  };
+  const toggleSM = (on: boolean) => {
+    try { gm?.toggleSlowMotion?.(on ? 1 : 0); } catch { /* ignore */ }
+    try { e.toggleSlowMotion?.(on ? 1 : 0); } catch { /* ignore */ }
+  };
   try {
-    if (speed >= 1) {
-      if (e.setFastForwardRatio) e.setFastForwardRatio(speed);
-      else if (e.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(speed);
-      e.gameManager?.setSlowMotionRatio?.(1);
+    if (speed === 1) {
+      toggleFF(false);
+      toggleSM(false);
+      setFFRatio(1);
+      setSMRatio(1);
+    } else if (speed > 1) {
+      toggleSM(false);
+      setSMRatio(1);
+      setFFRatio(speed);
+      toggleFF(true);
     } else {
-      const ratio = Math.round(1 / speed);
-      if (e.gameManager?.setSlowMotionRatio) e.gameManager.setSlowMotionRatio(ratio);
-      else if (e.setSlowMotionRatio) e.setSlowMotionRatio(ratio);
-      if (e.setFastForwardRatio) e.setFastForwardRatio(1);
-      else if (e.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(1);
+      const ratio = Math.max(2, Math.round(1 / speed));
+      toggleFF(false);
+      setFFRatio(1);
+      setSMRatio(ratio);
+      toggleSM(true);
     }
   } catch {
     // ignore — core may not support
