@@ -69,7 +69,7 @@ export default function SkinLayoutEditor({ skinUrl, orientation, open, onClose }
           <Move className="w-4 h-4 text-primary" />
           <div>
             <div className="text-sm font-display font-semibold">Customize layout</div>
-            <div className="text-[11px] text-muted-foreground">Drag any button to reposition. Saves automatically.</div>
+            <div className="text-[11px] text-muted-foreground">Drag any button or the screen to reposition. Drag the screen's bottom-right corner to resize. Saves automatically.</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
