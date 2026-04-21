@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Save, Download, Zap, Lock, Camera, Sparkles, X, Trash2, Plus } from "lucide-react";
+import { Menu, Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { getCheats, saveCheats, normaliseCheatCode, type Cheat } from "@/lib/cheatStore";
+import SaveStatesDialog from "@/components/SaveStatesDialog";
 
 interface Props {
   gameId: string;
@@ -30,6 +31,13 @@ interface Props {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
+
+/**
+ * Available emulation speeds. 1× is the natural rate. We keep the list short
+ * so the row fits on a single mobile line — wider grids hurt one-handed use.
+ */
+const SPEEDS = [0.5, 1, 2, 4] as const;
+type Speed = (typeof SPEEDS)[number];
 
 /**
  * Bottom-left floating menu button rendered on the Play screen.
@@ -50,60 +58,38 @@ export default function PlayMenu({
     else setInternalOpen(v);
   };
   const [cheatsOpen, setCheatsOpen] = useState(false);
-  const [fastForward, setFastForward] = useState(false);
+  const [statesOpen, setStatesOpen] = useState(false);
+  const [speed, setSpeed] = useState<Speed>(1);
 
   const emu = () => (window as any).EJS_emulator;
 
-  const saveState = async () => {
+  const setEmuSpeed = (s: Speed) => {
     try {
       const e = emu();
-      if (!e?.gameManager?.getState) throw new Error("Emulator not ready");
-      const state: Uint8Array = e.gameManager.getState();
-      const key = `delta-state:${gameId}`;
-      // Copy into a fresh ArrayBuffer to avoid SharedArrayBuffer typing issues
-      const buf = new ArrayBuffer(state.byteLength);
-      new Uint8Array(buf).set(state);
-      localStorage.setItem(key + ":ts", String(Date.now()));
-      const { set } = await import("idb-keyval");
-      await set(key, buf);
-      toast({ title: "State saved" });
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err?.message, variant: "destructive" });
-    }
-    setOpen(false);
-  };
-
-  const loadState = async () => {
-    try {
-      const e = emu();
-      if (!e?.gameManager?.loadState) throw new Error("Emulator not ready");
-      const { get } = await import("idb-keyval");
-      const buf = (await get(`delta-state:${gameId}`)) as ArrayBuffer | undefined;
-      if (!buf) {
-        toast({ title: "No saved state", description: "Save one first." });
-        return;
+      // mGBA / Gambatte / FCEUmm all respect setFastForwardRatio. For
+      // slow-motion (<1) we fall back to setting the libretro frame
+      // throttle directly, which EJS exposes as `setVideoBlocking`-style
+      // controls. The gameManager.setSlowMotionRatio path covers builds
+      // where it's available.
+      if (s >= 1) {
+        if (e?.setFastForwardRatio) e.setFastForwardRatio(s);
+        else if (e?.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(s);
+        // Disable any active slow-motion when going back to >=1×.
+        e?.gameManager?.setSlowMotionRatio?.(1);
+      } else {
+        // Slow-mo: ratio of 2 = half-speed in EJS conventions.
+        const ratio = Math.round(1 / s);
+        if (e?.gameManager?.setSlowMotionRatio) e.gameManager.setSlowMotionRatio(ratio);
+        else if (e?.setSlowMotionRatio) e.setSlowMotionRatio(ratio);
+        // Reset fast-forward.
+        if (e?.setFastForwardRatio) e.setFastForwardRatio(1);
+        else if (e?.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(1);
       }
-      e.gameManager.loadState(new Uint8Array(buf));
-      toast({ title: "State loaded" });
+      setSpeed(s);
+      toast({ title: `Speed: ${s}×` });
     } catch (err: any) {
-      toast({ title: "Load failed", description: err?.message, variant: "destructive" });
+      toast({ title: "Speed change failed", description: err?.message, variant: "destructive" });
     }
-    setOpen(false);
-  };
-
-  const toggleFastForward = () => {
-    try {
-      const e = emu();
-      const next = !fastForward;
-      // Most EJS builds expose setFastForwardRatio; fall back to gameManager.
-      if (e?.setFastForwardRatio) e.setFastForwardRatio(next ? 4 : 1);
-      else if (e?.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(next ? 4 : 1);
-      setFastForward(next);
-      toast({ title: next ? "Fast forward ON (4×)" : "Fast forward OFF" });
-    } catch (err: any) {
-      toast({ title: "Fast forward unavailable", description: err?.message, variant: "destructive" });
-    }
-    setOpen(false);
   };
 
   const screenshot = () => {
@@ -151,17 +137,39 @@ export default function PlayMenu({
             <DialogTitle>Game menu</DialogTitle>
             <DialogDescription>Quick actions for this session.</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-2">
-            <MenuTile icon={<Save className="w-5 h-5" />} label="Save state" onClick={saveState} />
-            <MenuTile icon={<Download className="w-5 h-5" />} label="Load state" onClick={loadState} />
+
+          {/* Speed control — single row, four buttons. */}
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+              <Gauge className="w-3.5 h-3.5" /> Speed
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setEmuSpeed(s)}
+                  className={`py-2 rounded-lg text-sm font-display font-semibold border transition-colors ${
+                    speed === s
+                      ? "bg-primary/15 border-primary/50 text-primary"
+                      : "bg-secondary/40 border-border/50 hover:bg-secondary/70"
+                  }`}
+                >
+                  {s}×
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <MenuTile icon={<Save className="w-5 h-5" />} label="Save states" onClick={() => { setOpen(false); setStatesOpen(true); }} />
             <MenuTile icon={<Sparkles className="w-5 h-5" />} label="Cheat codes" onClick={() => { setOpen(false); setCheatsOpen(true); }} />
-            <MenuTile icon={<Zap className="w-5 h-5" />} label={fastForward ? "Stop fast fwd" : "Fast forward"} onClick={toggleFastForward} active={fastForward} />
             <MenuTile icon={<Lock className="w-5 h-5" />} label={holdMode ? "Hold: ON" : "Hold buttons"} onClick={handleHold} active={holdMode} />
             <MenuTile icon={<Camera className="w-5 h-5" />} label="Screenshot" onClick={screenshot} />
           </div>
         </DialogContent>
       </Dialog>
 
+      <SaveStatesDialog gameId={gameId} open={statesOpen} onOpenChange={setStatesOpen} />
       <CheatsDialog gameId={gameId} open={cheatsOpen} onOpenChange={setCheatsOpen} />
     </>
   );
