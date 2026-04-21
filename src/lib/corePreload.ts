@@ -11,7 +11,7 @@
 const CDN = "https://cdn.emulatorjs.org/stable/data/";
 
 // Core slugs we ship support for. Keep aligned with CORE_MAP in Play.tsx.
-const CORES = ["gba", "gambatte", "nes"] as const;
+const CORES = ["mgba", "gambatte", "fceumm"] as const;
 
 let started = false;
 
