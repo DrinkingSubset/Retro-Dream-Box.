@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { Gamepad2, MoreVertical } from "lucide-react";
-import { GameMeta, formatSize } from "@/lib/gameStore";
+import { Gamepad2, Heart, MoreVertical } from "lucide-react";
+import { GameMeta, formatSize, formatPlayTime } from "@/lib/gameStore";
 import SystemBadge from "./SystemBadge";
 import GameContextMenu from "./GameContextMenu";
 
@@ -101,14 +101,20 @@ export default function GameCard({ game, onPlay, onChanged, index = 0 }: Props) 
           <div className="absolute top-2 left-2">
             <SystemBadge system={game.system} size="sm" />
           </div>
+          {game.favorite && (
+            <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <Heart className="w-3.5 h-3.5 fill-destructive text-destructive" />
+            </div>
+          )}
         </div>
 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="font-display font-semibold text-foreground truncate">{game.name}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
               {formatSize(game.size)}
-              {game.playCount > 0 && ` · Played ${game.playCount}×`}
+              {game.playCount > 0 && ` · ${game.playCount}×`}
+              {formatPlayTime(game.playTimeMs) && ` · ${formatPlayTime(game.playTimeMs)}`}
             </p>
           </div>
           <span

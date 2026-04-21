@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
-import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
+import { getGame, markPlayed, addPlayTime, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
@@ -284,6 +284,46 @@ export default function Play() {
   // is loaded — gamepad input flows through the same `sendInput` handler
   // as the on-screen controls, so hold-mode etc. all "just work".
   useGamepad({ enabled: !!game, onInput: sendInput });
+
+  // Track total play time. We accumulate elapsed wall time while the game is
+  // mounted, pausing when the tab/window is hidden so AFK time doesn't count.
+  // The total is flushed to IndexedDB on unmount and on every visibilitychange.
+  useEffect(() => {
+    if (!id || !started) return;
+    let segmentStart = document.visibilityState === "visible" ? performance.now() : 0;
+    let pendingMs = 0;
+
+    const flush = () => {
+      if (segmentStart) {
+        pendingMs += performance.now() - segmentStart;
+        segmentStart = 0;
+      }
+      if (pendingMs >= 1000) {
+        addPlayTime(id, Math.round(pendingMs)).catch(() => {});
+        pendingMs = 0;
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        if (!segmentStart) segmentStart = performance.now();
+      } else {
+        flush();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    // Flush every 30s as a safety net for users who never close the tab.
+    const interval = window.setInterval(flush, 30_000);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(interval);
+      flush();
+      // Final flush even for sub-second sessions on unmount.
+      if (pendingMs > 0) addPlayTime(id, Math.round(pendingMs)).catch(() => {});
+    };
+  }, [id, started]);
 
   if (error) {
     return (
