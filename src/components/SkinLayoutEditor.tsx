@@ -200,7 +200,7 @@ function EditorCanvas({
           offset={layout[SCREEN_KEY] ?? { dx: 0, dy: 0, scale: 1 }}
           onChange={(off) => onChange(SCREEN_KEY, off)}
         />
-        {rep.items.map((item, idx) => (
+        {rep.items.filter(isUserControl).map((item, idx) => (
           <DraggableRegion
             key={idx}
             item={item}
