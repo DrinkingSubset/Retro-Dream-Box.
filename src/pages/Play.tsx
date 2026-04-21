@@ -7,7 +7,7 @@ import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
 import PlayMenu, { applyCheatsToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
-import { useSettings } from "@/lib/settingsStore";
+import { useSettings, DISPLAY_MODE_FILTERS } from "@/lib/settingsStore";
 import { getCheats } from "@/lib/cheatStore";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
@@ -339,6 +339,9 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
 
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
+  // The CSS `filter` enriches the picture per the user's display profile —
+  // works because EJS draws to a <canvas> child of #emu-game.
+  const pictureFilter = DISPLAY_MODE_FILTERS[settings.displayMode];
   const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
     ? {
         position: "fixed",
@@ -347,6 +350,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
         width: screenRect.width,
         height: screenRect.height,
         zIndex: 5,
+        filter: pictureFilter,
       }
     : undefined;
 
@@ -409,7 +413,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
         <>
           <div className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-6 bg-black/50 min-h-0 relative">
             <div className="relative w-full h-full max-w-5xl max-h-full aspect-[4/3] mx-auto rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black [@media(max-height:480px)_and_(orientation:landscape)]:rounded-lg">
-              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" />
+              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" style={{ filter: pictureFilter }} />
               {!ready && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none">
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
