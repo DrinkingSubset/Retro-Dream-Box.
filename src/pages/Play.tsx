@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
-import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
+import { getGame, markPlayed, addPlayTime, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
