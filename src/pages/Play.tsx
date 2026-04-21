@@ -69,7 +69,10 @@ export default function Play() {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
-  const [holdMode, setHoldMode] = useState(false);
+  // Per-game default for hold-mode is read once on mount, then becomes
+  // mutable through the in-game menu.
+  const [holdMode, setHoldMode] = useState(() => (id ? !!getGameSettings(id).holdMode : false));
+  const [speed, setSpeed] = useState(() => (id ? getGameSettings(id).speed ?? 1 : 1));
   const heldRef = useRef<Set<string>>(new Set());
   const blobUrlRef = useRef<string | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
