@@ -56,6 +56,8 @@ export default function DeltaSkinController({
 
   const [skin, setSkin] = useState<ParsedSkin | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // All hooks must be called unconditionally before any early returns.
+  const layout = useSkinLayout(skinUrl);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,8 +69,6 @@ export default function DeltaSkinController({
     return () => { cancelled = true; };
   }, [skinUrl]);
 
-  // When the skin fails to load or while loading, clear any reported
-  // screen rect so the EJS canvas can fall back to a default position.
   useEffect(() => {
     if (error || !skin) onScreenRect?.(null);
   }, [error, skin, onScreenRect]);
@@ -85,7 +85,6 @@ export default function DeltaSkinController({
     return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
   }
 
-  const layout = useSkinLayout(skinUrl);
 
   return (
     <SkinCanvasWrapper
