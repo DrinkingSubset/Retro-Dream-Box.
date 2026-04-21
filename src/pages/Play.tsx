@@ -335,10 +335,14 @@ interface PlayLayoutProps {
   onSpeedChange: (s: number) => void;
 }
 
-function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode }: PlayLayoutProps) {
+function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode, speed, onSpeedChange }: PlayLayoutProps) {
   const settings = useSettings();
   const player = settings.players[1];
-  const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant, player.gbaVariant) : null;
+  const gameOverrides = useGameSettings(game?.id);
+  // Per-game custom skin wins; otherwise the player's chosen variant.
+  const skinUrl = game
+    ? getSkinUrlForSystem(game.system, player.gbcVariant, player.gbaVariant, gameOverrides.customSkinId)
+    : null;
 
   // Track viewport orientation so the skin controller knows which
   // representation to render.
