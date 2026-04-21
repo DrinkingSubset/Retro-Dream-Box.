@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus, Sliders, Video, Square } from "lucide-react";
+import { Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus, Sliders, Video, Square, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { getCheats, saveCheats, normaliseCheatCode, type Cheat } from "@/lib/cheatStore";
+import { listSlots, readSlot, type SaveSlot } from "@/lib/saveStateStore";
 import SaveStatesDialog from "@/components/SaveStatesDialog";
 import GameSettingsDialog from "@/components/GameSettingsDialog";
 import { startCanvasRecording, type ActiveRecording } from "@/lib/canvasRecorder";
