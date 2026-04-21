@@ -377,6 +377,9 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
             onInput={onInput}
             onMenu={onMenu}
             onPress={onPress}
+            offset={layout[inputKeyForItem(item)]}
+            mappingWidth={rep.mappingWidth}
+            mappingHeight={rep.mappingHeight}
           />
         ))}
       </div>
