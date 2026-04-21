@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cloud_saves: {
+        Row: {
+          file_path: string
+          game_id: string
+          game_name: string
+          id: string
+          kind: string
+          size: number
+          slot: number
+          system: string
+          thumbnail: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          file_path: string
+          game_id: string
+          game_name: string
+          id?: string
+          kind: string
+          size?: number
+          slot?: number
+          system: string
+          thumbnail?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          file_path?: string
+          game_id?: string
+          game_name?: string
+          id?: string
+          kind?: string
+          size?: number
+          slot?: number
+          system?: string
+          thumbnail?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
