@@ -150,8 +150,9 @@ async function renderBitmapToImage(
   imageBytes: Uint8Array,
   mimeType: string,
 ): Promise<{ dataUrl: string; width: number; height: number }> {
-  const bytes = imageBytes.buffer.slice(imageBytes.byteOffset, imageBytes.byteOffset + imageBytes.byteLength);
-  const blob = new Blob([bytes], { type: mimeType });
+  const bytes = new Uint8Array(imageBytes.byteLength);
+  bytes.set(imageBytes);
+  const blob = new Blob([bytes.buffer], { type: mimeType });
   const objectUrl = URL.createObjectURL(blob);
 
   try {
