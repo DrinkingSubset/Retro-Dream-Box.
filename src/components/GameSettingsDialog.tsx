@@ -193,15 +193,15 @@ export default function GameSettingsDialog({ gameId, system, open, onOpenChange 
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <SheetFooter className="gap-2 mt-4 flex-row">
           <Button variant="ghost" size="sm" onClick={reset}>
             <RotateCcw className="w-4 h-4" /> Reset
           </Button>
           <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4" /> Close
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
