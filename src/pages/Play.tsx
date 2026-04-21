@@ -623,6 +623,17 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
           showFps={settings.showFps}
           speed={speed}
           holdMode={holdMode}
+          anchorRect={skinUrl ? nudgedRect : null}
+        />
+      )}
+
+      {/* Skin layout editor — drag any button to a new spot. */}
+      {skinUrl && (
+        <SkinLayoutEditor
+          skinUrl={skinUrl}
+          orientation={orientation}
+          open={layoutEditorOpen}
+          onClose={() => setLayoutEditorOpen(false)}
         />
       )}
     </div>
