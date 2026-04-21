@@ -13,6 +13,12 @@ export interface GameRecord {
   lastPlayedAt?: number;
   playCount: number;
   artworkDataUrl?: string;
+  /** User has marked this game as a favorite. */
+  favorite?: boolean;
+  /** Free-form collection / tag names (e.g. "Pokémon", "Finished"). */
+  collections?: string[];
+  /** Total accumulated play time in milliseconds. */
+  playTimeMs?: number;
 }
 
 export interface GameMeta {
@@ -25,6 +31,9 @@ export interface GameMeta {
   lastPlayedAt?: number;
   playCount: number;
   artworkDataUrl?: string;
+  favorite?: boolean;
+  collections?: string[];
+  playTimeMs?: number;
 }
 
 const DB_NAME = "delta-emu";
@@ -225,8 +234,51 @@ export async function markPlayed(id: string): Promise<void> {
   await db.put(STORE, g);
 }
 
+export async function toggleFavorite(id: string): Promise<boolean> {
+  const db = await getDb();
+  const g = (await db.get(STORE, id)) as GameRecord | undefined;
+  if (!g) return false;
+  g.favorite = !g.favorite;
+  await db.put(STORE, g);
+  return !!g.favorite;
+}
+
+export async function setCollections(id: string, collections: string[]): Promise<void> {
+  const db = await getDb();
+  const g = (await db.get(STORE, id)) as GameRecord | undefined;
+  if (!g) return;
+  g.collections = Array.from(new Set(collections.map((c) => c.trim()).filter(Boolean)));
+  await db.put(STORE, g);
+}
+
+export async function addPlayTime(id: string, ms: number): Promise<void> {
+  if (ms <= 0) return;
+  const db = await getDb();
+  const g = (await db.get(STORE, id)) as GameRecord | undefined;
+  if (!g) return;
+  g.playTimeMs = (g.playTimeMs ?? 0) + ms;
+  await db.put(STORE, g);
+}
+
+export async function listCollections(): Promise<string[]> {
+  const games = await listGames();
+  const set = new Set<string>();
+  for (const g of games) for (const c of g.collections ?? []) set.add(c);
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
 export function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatPlayTime(ms: number | undefined) {
+  if (!ms || ms < 60_000) return null;
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remMin = minutes % 60;
+  if (hours < 10 && remMin) return `${hours}h ${remMin}m`;
+  return `${hours}h`;
 }
