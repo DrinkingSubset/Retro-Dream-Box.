@@ -313,6 +313,11 @@ export default function Play() {
       containerRef={containerRef}
       holdMode={holdMode}
       onToggleHoldMode={() => setHoldMode((v) => !v)}
+      speed={speed}
+      onSpeedChange={(s) => {
+        applySpeedToEmulator(s);
+        setSpeed(s);
+      }}
     />
   );
 }
@@ -326,6 +331,8 @@ interface PlayLayoutProps {
   containerRef: React.MutableRefObject<HTMLDivElement | null>;
   holdMode: boolean;
   onToggleHoldMode: () => void;
+  speed: number;
+  onSpeedChange: (s: number) => void;
 }
 
 function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode }: PlayLayoutProps) {
