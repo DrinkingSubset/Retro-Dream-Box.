@@ -26,6 +26,14 @@ export interface ButtonOffset {
  */
 export type SkinLayout = Record<string, ButtonOffset>;
 
+/** Reserved key used by the editor to reposition the game screen itself. */
+export const SCREEN_KEY = "__screen";
+
+/** Convenience accessor for the screen offset (or zeros). */
+export function getScreenOffset(skinUrl: string): ButtonOffset {
+  return getSkinLayout(skinUrl)[SCREEN_KEY] ?? { dx: 0, dy: 0, scale: 1 };
+}
+
 const KEY = "delta-skin-layouts-v1";
 const EVENT = "delta-skin-layouts-change";
 
