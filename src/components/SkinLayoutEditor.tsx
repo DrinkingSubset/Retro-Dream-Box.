@@ -173,7 +173,7 @@ function EditorCanvas({
         }}
       />
 
-      {/* Draggable hit regions */}
+      {/* Draggable hit regions + screen */}
       <div
         className="absolute"
         style={{
@@ -183,6 +183,23 @@ function EditorCanvas({
           height: skinRect.height,
         }}
       >
+        {/* Screen rectangle — draggable + resizable. Falls back to a
+            centered rect if the skin doesn't declare an explicit screen. */}
+        <ScreenRegion
+          screenFrame={
+            rep.screens?.[0]?.outputFrame ?? {
+              x: rep.mappingWidth * 0.1,
+              y: rep.mappingHeight * 0.05,
+              width: rep.mappingWidth * 0.8,
+              height: rep.mappingHeight * 0.4,
+            }
+          }
+          scale={scale}
+          mappingWidth={rep.mappingWidth}
+          mappingHeight={rep.mappingHeight}
+          offset={layout[SCREEN_KEY] ?? { dx: 0, dy: 0, scale: 1 }}
+          onChange={(off) => onChange(SCREEN_KEY, off)}
+        />
         {rep.items.map((item, idx) => (
           <DraggableRegion
             key={idx}
