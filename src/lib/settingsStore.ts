@@ -116,6 +116,7 @@ const DEFAULTS: AppSettings = {
   appIcon: "default",
   displayMode: "vivid",
   showFps: false,
+  cloudSync: {
     googleDrive: { connected: false },
     dropbox: { connected: false },
   },
