@@ -475,13 +475,17 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
               onMenu={handleSkinMenu}
             />
           </div>
+
+          {/* Shader overlay — fixed-positioned over the screen rect. */}
+          {shaderOverlayPinned && <div style={shaderOverlayPinned} aria-hidden />}
         </div>
       ) : (
         /* === Path B: legacy stacked layout (no Delta skin for this system) === */
         <>
           <div className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-6 bg-black/50 min-h-0 relative">
             <div className="relative w-full h-full max-w-5xl max-h-full aspect-[4/3] mx-auto rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black [@media(max-height:480px)_and_(orientation:landscape)]:rounded-lg">
-              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" style={{ filter: pictureFilter }} />
+              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" style={{ filter: composedFilter }} />
+              {shaderStyles.overlay && <div style={shaderStyles.overlay} aria-hidden />}
               {!ready && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none">
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -523,8 +527,11 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
       {game && started && (
         <PlayMenu
           gameId={game.id}
+          system={game.system}
           holdMode={holdMode}
           onToggleHoldMode={onToggleHoldMode}
+          speed={speed}
+          onSpeedChange={onSpeedChange}
           open={menuOpen}
           onOpenChange={setMenuOpen}
           hideTrigger={!!skinUrl}
