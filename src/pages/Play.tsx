@@ -139,7 +139,8 @@ export default function Play() {
     window.EJS_gameName = game.name;
     window.EJS_gameID = game.id;
     window.EJS_color = "#a855f7";
-    window.EJS_volume = 0.6;
+    // Honour per-game volume override; fall back to a sensible default.
+    window.EJS_volume = id ? (getGameSettings(id).volume ?? 0.6) : 0.6;
     // Disable EmulatorJS's built-in on-screen virtual gamepad — we render our
     // own controls below the screen. Without this, EJS overlays Fast/Slow/
     // Select/Start buttons directly on top of the gameplay on mobile.
@@ -168,8 +169,13 @@ export default function Play() {
     window.EJS_ready = () => setReady(true);
     window.EJS_onGameStart = () => {
       setStarted(true);
-      // Apply any saved cheats once the core is fully running.
-      if (id) getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
+      if (id) {
+        // Apply any saved cheats once the core is fully running.
+        getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
+        // Restore the per-game default speed (1× when not customised).
+        const gs = getGameSettings(id);
+        if (gs.speed && gs.speed !== 1) applySpeedToEmulator(gs.speed);
+      }
     };
 
     // Fresh loader script every boot — EmulatorJS guards against double-init
