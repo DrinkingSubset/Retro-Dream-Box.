@@ -142,6 +142,38 @@ export default function PlayMenu({
     setOpen(false);
   };
 
+  /**
+   * Quick-load: restore the most-recently-saved state across all 9 slots,
+   * so the user can resume from their latest checkpoint without picking
+   * one out of the grid.
+   */
+  const quickLoad = async () => {
+    try {
+      const e = emu();
+      if (!e?.gameManager?.loadState) throw new Error("Emulator not ready");
+      const slots = await listSlots(gameId);
+      let latest: { slot: SaveSlot; savedAt: number } | null = null;
+      for (const [slotKey, meta] of Object.entries(slots)) {
+        if (!meta) continue;
+        if (!latest || meta.savedAt > latest.savedAt) {
+          latest = { slot: Number(slotKey), savedAt: meta.savedAt };
+        }
+      }
+      if (!latest) {
+        toast({ title: "No save states yet", description: "Save a state first, then Load will resume it." });
+        setOpen(false);
+        return;
+      }
+      const buf = await readSlot(gameId, latest.slot);
+      if (!buf) throw new Error("Slot data missing");
+      e.gameManager.loadState(new Uint8Array(buf));
+      toast({ title: `Loaded slot ${latest.slot}`, description: "Resumed from your latest save." });
+    } catch (err: any) {
+      toast({ title: "Load failed", description: err?.message, variant: "destructive" });
+    }
+    setOpen(false);
+  };
+
   return (
     <>
       {!hideTrigger && (
