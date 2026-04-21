@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import CustomSkinsManager from "@/components/CustomSkinsManager";
 
 const SKINS: SkinId[] = ["nes", "snes", "n64", "gbc", "gba", "ds"];
 const APP_ICONS = [
@@ -265,6 +266,11 @@ export default function Settings() {
               );
             })}
           </div>
+        </Section>
+
+        {/* Custom skins */}
+        <Section title="Custom Skins" subtitle="Upload your own .deltaskin files">
+          <CustomSkinsManager />
         </Section>
 
         {/* Audio & haptics */}

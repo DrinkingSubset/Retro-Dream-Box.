@@ -5,11 +5,13 @@ import { getGame, markPlayed, SYSTEM_LABELS, type GameRecord, type SystemId } fr
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
 import SystemBadge from "@/components/SystemBadge";
-import PlayMenu, { applyCheatsToEmulator } from "@/components/PlayMenu";
+import PlayMenu, { applyCheatsToEmulator, applySpeedToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
 import { useSettings, DISPLAY_MODE_FILTERS } from "@/lib/settingsStore";
 import { getCheats } from "@/lib/cheatStore";
 import { useGamepad } from "@/hooks/useGamepad";
+import { useGameSettings, getGameSettings } from "@/lib/gameSettingsStore";
+import { getShaderStyles, composeFilters } from "@/lib/shaders";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
@@ -67,7 +69,10 @@ export default function Play() {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
-  const [holdMode, setHoldMode] = useState(false);
+  // Per-game default for hold-mode is read once on mount, then becomes
+  // mutable through the in-game menu.
+  const [holdMode, setHoldMode] = useState(() => (id ? !!getGameSettings(id).holdMode : false));
+  const [speed, setSpeed] = useState(() => (id ? getGameSettings(id).speed ?? 1 : 1));
   const heldRef = useRef<Set<string>>(new Set());
   const blobUrlRef = useRef<string | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
@@ -137,7 +142,8 @@ export default function Play() {
     window.EJS_gameName = game.name;
     window.EJS_gameID = game.id;
     window.EJS_color = "#a855f7";
-    window.EJS_volume = 0.6;
+    // Honour per-game volume override; fall back to a sensible default.
+    window.EJS_volume = id ? (getGameSettings(id).volume ?? 0.6) : 0.6;
     // Disable EmulatorJS's built-in on-screen virtual gamepad — we render our
     // own controls below the screen. Without this, EJS overlays Fast/Slow/
     // Select/Start buttons directly on top of the gameplay on mobile.
@@ -166,8 +172,13 @@ export default function Play() {
     window.EJS_ready = () => setReady(true);
     window.EJS_onGameStart = () => {
       setStarted(true);
-      // Apply any saved cheats once the core is fully running.
-      if (id) getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
+      if (id) {
+        // Apply any saved cheats once the core is fully running.
+        getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
+        // Restore the per-game default speed (1× when not customised).
+        const gs = getGameSettings(id);
+        if (gs.speed && gs.speed !== 1) applySpeedToEmulator(gs.speed);
+      }
     };
 
     // Fresh loader script every boot — EmulatorJS guards against double-init
@@ -302,6 +313,11 @@ export default function Play() {
       containerRef={containerRef}
       holdMode={holdMode}
       onToggleHoldMode={() => setHoldMode((v) => !v)}
+      speed={speed}
+      onSpeedChange={(s) => {
+        applySpeedToEmulator(s);
+        setSpeed(s);
+      }}
     />
   );
 }
@@ -315,12 +331,18 @@ interface PlayLayoutProps {
   containerRef: React.MutableRefObject<HTMLDivElement | null>;
   holdMode: boolean;
   onToggleHoldMode: () => void;
+  speed: number;
+  onSpeedChange: (s: number) => void;
 }
 
-function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode }: PlayLayoutProps) {
+function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, holdMode, onToggleHoldMode, speed, onSpeedChange }: PlayLayoutProps) {
   const settings = useSettings();
   const player = settings.players[1];
-  const skinUrl = game ? getSkinUrlForSystem(game.system, player.gbcVariant, player.gbaVariant) : null;
+  const gameOverrides = useGameSettings(game?.id);
+  // Per-game custom skin wins; otherwise the player's chosen variant.
+  const skinUrl = game
+    ? getSkinUrlForSystem(game.system, player.gbcVariant, player.gbaVariant, gameOverrides.customSkinId)
+    : null;
 
   // Track viewport orientation so the skin controller knows which
   // representation to render.
@@ -366,9 +388,12 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
 
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
-  // The CSS `filter` enriches the picture per the user's display profile —
-  // works because EJS draws to a <canvas> child of #emu-game.
-  const pictureFilter = DISPLAY_MODE_FILTERS[settings.displayMode];
+  // The CSS `filter` composes the user's picture profile with any active
+  // shader's extra filter — both apply via the same canvas filter chain.
+  const activeDisplayMode = gameOverrides.displayMode ?? settings.displayMode;
+  const pictureFilter = DISPLAY_MODE_FILTERS[activeDisplayMode];
+  const shaderStyles = getShaderStyles(gameOverrides.shader ?? "off");
+  const composedFilter = composeFilters(pictureFilter, shaderStyles.extraCanvasFilter);
   const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
     ? {
         position: "fixed",
@@ -377,9 +402,24 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
         width: screenRect.width,
         height: screenRect.height,
         zIndex: 5,
-        filter: pictureFilter,
+        filter: composedFilter,
       }
     : undefined;
+  // Shader overlay layer — only rendered when a shader is active. When a
+  // skin is active we pin it to the screen rect; otherwise it sits inside
+  // the legacy stage and just stretches to fill it.
+  const shaderOverlayPinned: React.CSSProperties | null =
+    shaderStyles.overlay && skinUrl && screenRect
+      ? {
+          ...shaderStyles.overlay,
+          position: "fixed",
+          left: screenRect.left,
+          top: screenRect.top,
+          width: screenRect.width,
+          height: screenRect.height,
+          zIndex: 6,
+        }
+      : null;
 
   return (
     <div className="min-h-dscreen flex flex-col bg-background">
@@ -435,13 +475,17 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
               onMenu={handleSkinMenu}
             />
           </div>
+
+          {/* Shader overlay — fixed-positioned over the screen rect. */}
+          {shaderOverlayPinned && <div style={shaderOverlayPinned} aria-hidden />}
         </div>
       ) : (
         /* === Path B: legacy stacked layout (no Delta skin for this system) === */
         <>
           <div className="flex-1 flex items-center justify-center p-1 sm:p-2 md:p-6 bg-black/50 min-h-0 relative">
             <div className="relative w-full h-full max-w-5xl max-h-full aspect-[4/3] mx-auto rounded-xl sm:rounded-2xl overflow-hidden ring-1 ring-primary/20 shadow-elevated bg-black [@media(max-height:480px)_and_(orientation:landscape)]:rounded-lg">
-              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" style={{ filter: pictureFilter }} />
+              <div ref={containerRef} id="emu-game" className="absolute inset-0 w-full h-full" style={{ filter: composedFilter }} />
+              {shaderStyles.overlay && <div style={shaderStyles.overlay} aria-hidden />}
               {!ready && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm pointer-events-none">
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -483,8 +527,11 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
       {game && started && (
         <PlayMenu
           gameId={game.id}
+          system={game.system}
           holdMode={holdMode}
           onToggleHoldMode={onToggleHoldMode}
+          speed={speed}
+          onSpeedChange={onSpeedChange}
           open={menuOpen}
           onOpenChange={setMenuOpen}
           hideTrigger={!!skinUrl}
