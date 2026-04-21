@@ -115,7 +115,7 @@ const DEFAULTS: AppSettings = {
   hapticFeedback: true,
   appIcon: "default",
   displayMode: "vivid",
-  cloudSync: {
+  showFps: false,
     googleDrive: { connected: false },
     dropbox: { connected: false },
   },
