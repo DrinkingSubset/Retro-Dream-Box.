@@ -470,6 +470,45 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
           hideTrigger={!!skinUrl}
         />
       )}
+
+      {/* Live FPS counter — fixed top-left under the header. Only mounts
+          while the game is actually running and the user has opted in. */}
+      {settings.showFps && started && <FpsCounter />}
+    </div>
+  );
+}
+
+/**
+ * Lightweight requestAnimationFrame-based FPS meter. Renders a small
+ * monospace pill in the top-left of the viewport. Updates ~once per second
+ * to avoid distracting flicker.
+ */
+function FpsCounter() {
+  const [fps, setFps] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    let frames = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      frames++;
+      const delta = now - last;
+      if (delta >= 1000) {
+        setFps(Math.round((frames * 1000) / delta));
+        frames = 0;
+        last = now;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <div
+      className="fixed left-2 z-40 px-2 py-1 rounded-md bg-background/70 backdrop-blur-sm border border-border/50 text-xs font-mono tabular-nums text-primary pointer-events-none"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
+      aria-label={`${fps} frames per second`}
+    >
+      {fps} FPS
     </div>
   );
 }
