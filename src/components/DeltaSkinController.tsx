@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { loadDeltaSkin, expandInputs, pickRepresentation, type ParsedSkin, type RenderedRepresentation, type SkinItem } from "@/lib/deltaSkin";
 import { useSettings, triggerHaptic } from "@/lib/settingsStore";
+import { useSkinLayout, inputKeyForItem, type SkinLayout } from "@/lib/skinLayoutStore";
 
 /**
  * Maps Delta input names → the canonical button strings that Play.tsx
@@ -84,6 +85,8 @@ export default function DeltaSkinController({
     return <div className="w-full h-32 animate-pulse bg-secondary/40 rounded-xl" />;
   }
 
+  const layout = useSkinLayout(skinUrl);
+
   return (
     <SkinCanvasWrapper
       skin={skin}
@@ -93,6 +96,7 @@ export default function DeltaSkinController({
       onMenu={onMenu}
       opacity={opacity}
       settings={settings}
+      layout={layout}
     />
   );
 }
@@ -110,6 +114,7 @@ function SkinCanvasWrapper({
   onMenu,
   opacity,
   settings,
+  layout,
 }: {
   skin: ParsedSkin;
   orientation: "portrait" | "landscape";
@@ -118,6 +123,7 @@ function SkinCanvasWrapper({
   onMenu?: () => void;
   opacity: number;
   settings: ReturnType<typeof useSettings>;
+  layout: SkinLayout;
 }) {
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== "undefined" ? window.innerWidth : 390,
@@ -144,6 +150,7 @@ function SkinCanvasWrapper({
       onMenu={onMenu}
       opacity={opacity}
       onPress={onPress}
+      layout={layout}
     />
   );
 }
@@ -156,9 +163,10 @@ interface CanvasProps {
   onMenu?: () => void;
   opacity: number;
   onPress: () => void;
+  layout: SkinLayout;
 }
 
-function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, onPress }: CanvasProps) {
+function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, onPress, layout }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   /** [width, height] of the rendered skin area, in CSS pixels. */
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -369,6 +377,9 @@ function SkinCanvas({ rep, orientation, onInput, onScreenRect, onMenu, opacity, 
             onInput={onInput}
             onMenu={onMenu}
             onPress={onPress}
+            offset={layout[inputKeyForItem(item)]}
+            mappingWidth={rep.mappingWidth}
+            mappingHeight={rep.mappingHeight}
           />
         ))}
       </div>
@@ -385,21 +396,34 @@ interface HitRegionProps {
   onInput: (button: string, pressed: boolean) => void;
   onMenu?: () => void;
   onPress: () => void;
+  offset?: { dx: number; dy: number; scale?: number };
+  mappingWidth: number;
+  mappingHeight: number;
 }
 
-function HitRegion({ item, scale, onInput, onMenu, onPress }: HitRegionProps) {
+function HitRegion({ item, scale, onInput, onMenu, onPress, offset, mappingWidth, mappingHeight }: HitRegionProps) {
   const inputs = expandInputs(item);
   const isDpad =
     !Array.isArray(item.inputs) &&
     "up" in item.inputs && "down" in item.inputs;
   const isThumbstick = !!item.thumbstick;
 
+  // Apply the user's saved offset (fraction of mappingSize) on top of the
+  // skin's authored frame, then expand outward by extendedEdges.
+  const dxPx = (offset?.dx ?? 0) * mappingWidth;
+  const dyPx = (offset?.dy ?? 0) * mappingHeight;
+  const sizeMul = offset?.scale ?? 1;
+  const fx = item.frame.x + dxPx;
+  const fy = item.frame.y + dyPx;
+  const fw = item.frame.width * sizeMul;
+  const fh = item.frame.height * sizeMul;
+
   // Extended edges expand the hit area outward (per Delta's design).
   const ext = item.extendedEdges ?? {};
-  const left = (item.frame.x - (ext.left ?? 0)) * scale;
-  const top = (item.frame.y - (ext.top ?? 0)) * scale;
-  const width = (item.frame.width + (ext.left ?? 0) + (ext.right ?? 0)) * scale;
-  const height = (item.frame.height + (ext.top ?? 0) + (ext.bottom ?? 0)) * scale;
+  const left = (fx - (ext.left ?? 0)) * scale;
+  const top = (fy - (ext.top ?? 0)) * scale;
+  const width = (fw + (ext.left ?? 0) + (ext.right ?? 0)) * scale;
+  const height = (fh + (ext.top ?? 0) + (ext.bottom ?? 0)) * scale;
 
   // ----- Single-input button (A, B, Start, etc.) -----
   if (!isDpad && !isThumbstick && inputs.length >= 1) {

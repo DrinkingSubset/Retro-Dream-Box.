@@ -3,7 +3,7 @@
  * main PlayMenu so the menu stays compact on small screens.
  */
 import { useState } from "react";
-import { Sliders, RotateCcw, X } from "lucide-react";
+import { Sliders, RotateCcw, X, Move } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -32,11 +32,14 @@ interface Props {
   system: SystemId;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Optional — show a "Customize button layout" entry that opens an
+   *  on-screen drag editor for the active skin's hit regions. */
+  onCustomizeLayout?: () => void;
 }
 
 const SPEEDS = [0.5, 1, 2, 4] as const;
 
-export default function GameSettingsDialog({ gameId, system, open, onOpenChange }: Props) {
+export default function GameSettingsDialog({ gameId, system, open, onOpenChange, onCustomizeLayout }: Props) {
   const overrides = useGameSettings(gameId);
   const globals = useSettings();
   const customSkins = useCustomSkins().filter((s) => s.system === system);
@@ -97,6 +100,23 @@ export default function GameSettingsDialog({ gameId, system, open, onOpenChange 
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Customize button layout — drag-to-reposition hit regions on
+              the active skin. Available for built-in and custom skins alike. */}
+          {onCustomizeLayout && (
+            <div>
+              <Label className="text-sm font-display font-semibold mb-2 block">Button layout</Label>
+              <button
+                onClick={() => onCustomizeLayout()}
+                className="w-full p-3 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-display font-semibold flex items-center justify-center gap-2 transition-colors"
+              >
+                <Move className="w-4 h-4" /> Customize button layout
+              </button>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Drag any button to a new spot. Saved per skin and applied on every device.
+              </p>
             </div>
           )}
 

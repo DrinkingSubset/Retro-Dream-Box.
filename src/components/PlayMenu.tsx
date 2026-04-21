@@ -46,6 +46,9 @@ interface Props {
   /** Controlled open state. If omitted, the component manages its own state. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Optional — when provided, the per-game settings sheet shows a
+   *  "Customize layout" button that opens the on-screen drag editor. */
+  onCustomizeLayout?: () => void;
 }
 
 const SPEEDS = [0.5, 1, 2, 4] as const;
@@ -64,6 +67,7 @@ export default function PlayMenu({
   hideTrigger,
   open: controlledOpen,
   onOpenChange,
+  onCustomizeLayout,
 }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -246,7 +250,16 @@ export default function PlayMenu({
       </Sheet>
 
       <SaveStatesDialog gameId={gameId} open={statesOpen} onOpenChange={setStatesOpen} />
-      <GameSettingsDialog gameId={gameId} system={system} open={gameSettingsOpen} onOpenChange={setGameSettingsOpen} />
+      <GameSettingsDialog
+        gameId={gameId}
+        system={system}
+        open={gameSettingsOpen}
+        onOpenChange={setGameSettingsOpen}
+        onCustomizeLayout={onCustomizeLayout ? () => {
+          setGameSettingsOpen(false);
+          onCustomizeLayout();
+        } : undefined}
+      />
       <CheatsDialog gameId={gameId} open={cheatsOpen} onOpenChange={setCheatsOpen} />
     </>
   );

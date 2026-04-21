@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { getGame, markPlayed, addPlayTime, SYSTEM_LABELS, type GameRecord, type SystemId } from "@/lib/gameStore";
 import VirtualController from "@/components/VirtualController";
 import DeltaSkinController from "@/components/DeltaSkinController";
+import SkinLayoutEditor from "@/components/SkinLayoutEditor";
 import SystemBadge from "@/components/SystemBadge";
 import PlayMenu, { applyCheatsToEmulator, applySpeedToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
@@ -12,6 +13,7 @@ import { getCheats } from "@/lib/cheatStore";
 import { useGamepad } from "@/hooks/useGamepad";
 import { useGameSettings, getGameSettings } from "@/lib/gameSettingsStore";
 import { getShaderStyles, composeFilters } from "@/lib/shaders";
+import { warmCore } from "@/lib/corePreload";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
@@ -96,6 +98,10 @@ export default function Play() {
           setError("This ROM file appears to be empty or corrupted.");
           return;
         }
+        // Warm the specific core's bytes immediately — the loader script
+        // fires next, so this is essentially a parallel head-start for the
+        // largest WASM payload (mGBA in particular).
+        warmCore(CORE_MAP[g.system] as "mgba" | "gambatte" | "fceumm");
         setGame(g);
         markPlayed(id).catch(() => {});
       })
@@ -144,6 +150,23 @@ export default function Play() {
     window.EJS_color = "#a855f7";
     // Honour per-game volume override; fall back to a sensible default.
     window.EJS_volume = id ? (getGameSettings(id).volume ?? 0.6) : 0.6;
+    // Per-system core options. mGBA in particular benefits from skipping the
+    // BIOS intro and using a slightly higher frameskip on slow devices —
+    // both shave seconds off the time-to-first-frame on Game Boy Advance.
+    if (game.system === "gba") {
+      window.EJS_defaultOptions = {
+        "mgba_skip_bios": "ON",
+        "mgba_frameskip": "auto-threshold",
+        "mgba_frameskip_threshold": "33",
+        "mgba_force_gbp": "OFF",
+        "mgba_idle_optimization": "Remove Known",
+        "mgba_solar_sensor_level": "0",
+        "mgba_use_bios": "OFF",
+        // Disable threaded video — single-threaded is faster to spin up
+        // on mobile WebAssembly runtimes.
+        "mgba_gb_colors": "GBA",
+      };
+    }
     // Disable EmulatorJS's built-in on-screen virtual gamepad — we render our
     // own controls below the screen. Without this, EJS overlays Fast/Slow/
     // Select/Start buttons directly on top of the gameplay on mobile.
@@ -426,6 +449,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   // region, we hide the redundant floating button.
   const [menuOpen, setMenuOpen] = useState(false);
   const handleSkinMenu = useCallback(() => setMenuOpen(true), []);
+  const [layoutEditorOpen, setLayoutEditorOpen] = useState(false);
 
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
@@ -436,15 +460,19 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   const shaderStyles = getShaderStyles(gameOverrides.shader ?? "off");
   const composedFilter = composeFilters(pictureFilter, shaderStyles.extraCanvasFilter);
   // Nudge the canvas down within the skin's screen rect so the picture sits
-  // closer to the bezel/logo (per design feedback). We trim a small slice off
-  // the top to keep the bottom edge anchored where the skin expects.
+  // closer to the bezel/logo. GBA skins have a much larger native screen
+  // window so we use a smaller nudge (and grow horizontally to use the full
+  // width). GBC keeps the larger 12% nudge to clear the GBC branding.
   const nudgedRect = screenRect
     ? (() => {
-        const nudge = Math.round(screenRect.height * 0.12);
+        const nudgePct = game?.system === "gba" ? 0.03 : 0.12;
+        const nudge = Math.round(screenRect.height * nudgePct);
+        // GBA: expand horizontally to fill any extra space the skin allows.
+        const widen = game?.system === "gba" ? Math.round(screenRect.width * 0.04) : 0;
         return {
-          left: screenRect.left,
+          left: screenRect.left - widen / 2,
           top: screenRect.top + nudge,
-          width: screenRect.width,
+          width: screenRect.width + widen,
           height: Math.max(1, screenRect.height - nudge),
         };
       })()
@@ -590,6 +618,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
           open={menuOpen}
           onOpenChange={setMenuOpen}
           hideTrigger={!!skinUrl}
+          onCustomizeLayout={skinUrl ? () => setLayoutEditorOpen(true) : undefined}
         />
       )}
 
@@ -601,6 +630,17 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
           showFps={settings.showFps}
           speed={speed}
           holdMode={holdMode}
+          anchorRect={skinUrl ? nudgedRect : null}
+        />
+      )}
+
+      {/* Skin layout editor — drag any button to a new spot. */}
+      {skinUrl && (
+        <SkinLayoutEditor
+          skinUrl={skinUrl}
+          orientation={orientation}
+          open={layoutEditorOpen}
+          onClose={() => setLayoutEditorOpen(false)}
         />
       )}
     </div>
@@ -616,10 +656,12 @@ function StatsPill({
   showFps,
   speed,
   holdMode,
+  anchorRect,
 }: {
   showFps: boolean;
   speed: number;
   holdMode: boolean;
+  anchorRect: { left: number; top: number; width: number; height: number } | null;
 }) {
   const [fps, setFps] = useState(0);
   useEffect(() => {
@@ -644,10 +686,27 @@ function StatsPill({
   const showSpeed = speed !== 1;
   if (!showFps && !showSpeed && !holdMode) return null;
 
+  // When a skin is active, sit just inside the top of the game-screen rect
+  // (so the FPS pill stays "within the skin's window" rather than floating
+  // up in the dead space under the header).
+  const positionStyle: React.CSSProperties = anchorRect
+    ? {
+        position: "fixed",
+        left: anchorRect.left + 6,
+        top: anchorRect.top + 6,
+        zIndex: 40,
+      }
+    : {
+        position: "fixed",
+        left: "0.5rem",
+        top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
+        zIndex: 40,
+      };
+
   return (
     <div
-      className="fixed left-2 z-40 flex items-center gap-1 pointer-events-none"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
+      className="flex items-center gap-1 pointer-events-none"
+      style={positionStyle}
     >
       {showFps && (
         <span
