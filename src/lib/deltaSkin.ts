@@ -25,8 +25,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
  * Key: `${skinUrl}::${orientation}` → cached PNG data URL + metadata.
  * This avoids re-rasterising the same PDF every time a game opens.
  */
-const SKIN_CACHE_VERSION = 2;
-const skinStore = createStore("delta-skin-cache", "rendered-v2");
+const SKIN_CACHE_VERSION = 3;
+const skinStore = createStore("delta-skin-cache", "rendered-v3");
 
 interface CachedRep {
   v: number;
