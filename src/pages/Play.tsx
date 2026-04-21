@@ -9,6 +9,7 @@ import PlayMenu, { applyCheatsToEmulator } from "@/components/PlayMenu";
 import { getSkinUrlForSystem } from "@/lib/skinRegistry";
 import { useSettings, DISPLAY_MODE_FILTERS } from "@/lib/settingsStore";
 import { getCheats } from "@/lib/cheatStore";
+import { useGamepad } from "@/hooks/useGamepad";
 
 // EmulatorJS core mapping. Values are the canonical EJS_core strings.
 // gba   -> mGBA
@@ -267,6 +268,11 @@ export default function Play() {
     }
     heldRef.current.clear();
   }, [holdMode]);
+
+  // Wire up physical gamepads (Web Gamepad API). Active whenever a game
+  // is loaded — gamepad input flows through the same `sendInput` handler
+  // as the on-screen controls, so hold-mode etc. all "just work".
+  useGamepad({ enabled: !!game, onInput: sendInput });
 
   if (error) {
     return (
