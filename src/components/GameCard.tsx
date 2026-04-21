@@ -103,7 +103,7 @@ export default function GameCard({ game, onPlay, onChanged, index = 0 }: Props) 
           </div>
           {game.favorite && (
             <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />
+              <Heart className="w-3.5 h-3.5 fill-destructive text-destructive" />
             </div>
           )}
         </div>
