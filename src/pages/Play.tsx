@@ -144,6 +144,23 @@ export default function Play() {
     window.EJS_color = "#a855f7";
     // Honour per-game volume override; fall back to a sensible default.
     window.EJS_volume = id ? (getGameSettings(id).volume ?? 0.6) : 0.6;
+    // Per-system core options. mGBA in particular benefits from skipping the
+    // BIOS intro and using a slightly higher frameskip on slow devices —
+    // both shave seconds off the time-to-first-frame on Game Boy Advance.
+    if (game.system === "gba") {
+      window.EJS_defaultOptions = {
+        "mgba_skip_bios": "ON",
+        "mgba_frameskip": "auto-threshold",
+        "mgba_frameskip_threshold": "33",
+        "mgba_force_gbp": "OFF",
+        "mgba_idle_optimization": "Remove Known",
+        "mgba_solar_sensor_level": "0",
+        "mgba_use_bios": "OFF",
+        // Disable threaded video — single-threaded is faster to spin up
+        // on mobile WebAssembly runtimes.
+        "mgba_gb_colors": "GBA",
+      };
+    }
     // Disable EmulatorJS's built-in on-screen virtual gamepad — we render our
     // own controls below the screen. Without this, EJS overlays Fast/Slow/
     // Select/Start buttons directly on top of the gameplay on mobile.
