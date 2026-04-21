@@ -3,10 +3,10 @@
  *
  * A `.deltaskin` is a zip archive containing:
  *   - info.json   — layout, hit regions, mappingSize for each device/orientation
- *   - one or more PDFs (e.g. iphone_portrait.pdf, iphone_landscape.pdf)
+ *   - one or more artwork assets (PDF, PNG, JPG, WEBP)
  *
- * We unzip in the browser, parse info.json, and rasterise the relevant PDF
- * to a PNG data URL via PDF.js. The rendered image becomes the controller
+ * We unzip in the browser, parse info.json, and rasterise the relevant
+ * artwork asset to a PNG data URL. The rendered image becomes the controller
  * background; touch buttons are positioned over the hit regions.
  *
  * NOTE: We use the legacy build of PDF.js so the worker can be bundled by
@@ -25,8 +25,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
  * Key: `${skinUrl}::${orientation}` → cached PNG data URL + metadata.
  * This avoids re-rasterising the same PDF every time a game opens.
  */
-const SKIN_CACHE_VERSION = 3;
-const skinStore = createStore("delta-skin-cache", "rendered-v3");
+const SKIN_CACHE_VERSION = 4;
+const skinStore = createStore("delta-skin-cache", "rendered-v4");
 
 interface CachedRep {
   v: number;
@@ -146,6 +146,52 @@ async function renderPdfToImage(
   }
 }
 
+async function renderBitmapToImage(
+  imageBytes: Uint8Array,
+  mimeType: string,
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const blob = new Blob([imageBytes], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Invalid image asset"));
+      img.src = objectUrl;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not get 2D context");
+
+    ctx.drawImage(image, 0, 0);
+    return {
+      dataUrl: canvas.toDataURL("image/png"),
+      width: canvas.width,
+      height: canvas.height,
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function renderSkinAssetToImage(
+  assetName: string,
+  assetBytes: Uint8Array,
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const normalized = assetName.toLowerCase();
+  if (normalized.endsWith(".pdf")) return renderPdfToImage(assetBytes);
+  if (normalized.endsWith(".png")) return renderBitmapToImage(assetBytes, "image/png");
+  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) {
+    return renderBitmapToImage(assetBytes, "image/jpeg");
+  }
+  if (normalized.endsWith(".webp")) return renderBitmapToImage(assetBytes, "image/webp");
+  throw new Error(`Unsupported skin asset: ${assetName}`);
+}
+
 /**
  * Fetch and parse a `.deltaskin` archive. Results are cached per URL so the
  * same skin isn't re-rendered on every screen switch.
@@ -211,12 +257,12 @@ export function loadDeltaSkin(url: string): Promise<ParsedSkin> {
     }
 
     async function renderRep(rep: SkinRepresentation): Promise<RenderedRepresentation> {
-      const pdfName = rep.assets?.resizable ?? rep.assets?.large ?? rep.assets?.medium ?? rep.assets?.small;
-      if (!pdfName) throw new Error("Representation missing PDF asset");
-      const pdfFile = zip.file(pdfName);
-      if (!pdfFile) throw new Error(`Skin missing PDF asset: ${pdfName}`);
-      const pdfBytes = new Uint8Array(await pdfFile.async("arraybuffer"));
-      const rendered = await renderPdfToImage(pdfBytes);
+      const assetName = rep.assets?.resizable ?? rep.assets?.large ?? rep.assets?.medium ?? rep.assets?.small;
+      if (!assetName) throw new Error("Representation missing artwork asset");
+      const assetFile = zip.file(assetName);
+      if (!assetFile) throw new Error(`Skin missing artwork asset: ${assetName}`);
+      const assetBytes = new Uint8Array(await assetFile.async("arraybuffer"));
+      const rendered = await renderSkinAssetToImage(assetName, assetBytes);
       return {
         imageDataUrl: rendered.dataUrl,
         imageWidth: rendered.width,
