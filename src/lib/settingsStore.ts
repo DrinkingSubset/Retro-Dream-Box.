@@ -71,11 +71,22 @@ export interface PlayerSettings {
   gbaVariant: GbaVariantId;
 }
 
+/**
+ * Display profile applied to the emulator canvas as a CSS filter.
+ * - standard: untouched, true to original output
+ * - vivid:    saturation +30%, mild contrast — a nice middle ground on LCDs
+ * - oled-pop: heavy saturation + contrast + slight gamma — designed to make
+ *             retro palettes pop on OLED panels (Z Fold, Galaxy S, iPhone Pro).
+ */
+export type DisplayMode = "standard" | "vivid" | "oled-pop";
+
 export interface AppSettings {
   players: Record<PlayerId, PlayerSettings>;
   respectSilentMode: boolean;
   hapticFeedback: boolean;
   appIcon: "default" | "midnight" | "retro" | "neon";
+  /** Picture profile applied to the emulator canvas. */
+  displayMode: DisplayMode;
   cloudSync: {
     googleDrive: { connected: boolean; email?: string };
     dropbox: { connected: boolean; email?: string };
@@ -101,10 +112,27 @@ const DEFAULTS: AppSettings = {
   respectSilentMode: false,
   hapticFeedback: true,
   appIcon: "default",
+  displayMode: "vivid",
   cloudSync: {
     googleDrive: { connected: false },
     dropbox: { connected: false },
   },
+};
+
+/**
+ * CSS `filter` string for each display mode. Applied to the EmulatorJS canvas
+ * to richen retro palettes on modern phone displays.
+ */
+export const DISPLAY_MODE_FILTERS: Record<DisplayMode, string> = {
+  "standard": "none",
+  "vivid":    "saturate(1.3) contrast(1.08)",
+  "oled-pop": "saturate(1.55) contrast(1.18) brightness(1.05)",
+};
+
+export const DISPLAY_MODE_LABELS: Record<DisplayMode, { label: string; desc: string }> = {
+  "standard": { label: "Standard",  desc: "Original colors, untouched" },
+  "vivid":    { label: "Vivid",     desc: "Boosted saturation for modern LCD screens" },
+  "oled-pop": { label: "OLED Pop",  desc: "Punchy colors tuned for OLED panels" },
 };
 
 const KEY = "delta-settings-v1";
