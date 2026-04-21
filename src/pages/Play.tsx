@@ -388,9 +388,12 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
 
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
-  // The CSS `filter` enriches the picture per the user's display profile —
-  // works because EJS draws to a <canvas> child of #emu-game.
-  const pictureFilter = DISPLAY_MODE_FILTERS[settings.displayMode];
+  // The CSS `filter` composes the user's picture profile with any active
+  // shader's extra filter — both apply via the same canvas filter chain.
+  const activeDisplayMode = gameOverrides.displayMode ?? settings.displayMode;
+  const pictureFilter = DISPLAY_MODE_FILTERS[activeDisplayMode];
+  const shaderStyles = getShaderStyles(gameOverrides.shader ?? "off");
+  const composedFilter = composeFilters(pictureFilter, shaderStyles.extraCanvasFilter);
   const canvasStyle: React.CSSProperties | undefined = skinUrl && screenRect
     ? {
         position: "fixed",
@@ -399,9 +402,24 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
         width: screenRect.width,
         height: screenRect.height,
         zIndex: 5,
-        filter: pictureFilter,
+        filter: composedFilter,
       }
     : undefined;
+  // Shader overlay layer — only rendered when a shader is active. When a
+  // skin is active we pin it to the screen rect; otherwise it sits inside
+  // the legacy stage and just stretches to fill it.
+  const shaderOverlayPinned: React.CSSProperties | null =
+    shaderStyles.overlay && skinUrl && screenRect
+      ? {
+          ...shaderStyles.overlay,
+          position: "fixed",
+          left: screenRect.left,
+          top: screenRect.top,
+          width: screenRect.width,
+          height: screenRect.height,
+          zIndex: 6,
+        }
+      : null;
 
   return (
     <div className="min-h-dscreen flex flex-col bg-background">
