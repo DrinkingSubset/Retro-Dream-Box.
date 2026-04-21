@@ -98,14 +98,18 @@ export default function SaveStatesDialog({ gameId, open, onOpenChange }: Props) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Save states</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="rounded-t-2xl border-t border-border/60 bg-background/95 backdrop-blur-xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto"
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/30" />
+        <SheetHeader className="text-left mb-3">
+          <SheetTitle className="text-base">Save states</SheetTitle>
+          <SheetDescription className="text-xs">
             9 slots per game. Tap an empty slot to save; tap a filled slot to load.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         <div className="grid grid-cols-3 gap-2">
           {SAVE_SLOTS.map((slot) => {
