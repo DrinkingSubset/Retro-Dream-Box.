@@ -234,6 +234,17 @@ export default function Settings() {
             </div>
           </div>
 
+          <Row
+            icon={<Activity className="w-4 h-4" />}
+            label="Show FPS counter"
+            description="Display a live frames-per-second overlay while playing"
+          >
+            <Switch
+              checked={settings.showFps}
+              onCheckedChange={(v) => updateSettings({ showFps: v })}
+            />
+          </Row>
+
           <Label className="text-sm font-display font-semibold mb-3 block">Change app icon</Label>
           <div className="grid grid-cols-4 gap-3">
             {APP_ICONS.map((icon) => {
