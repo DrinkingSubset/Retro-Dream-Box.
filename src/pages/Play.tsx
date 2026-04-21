@@ -464,17 +464,30 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   // closer to the bezel/logo. GBA skins have a much larger native screen
   // window so we use a smaller nudge (and grow horizontally to use the full
   // width). GBC keeps the larger 12% nudge to clear the GBC branding.
+  const skinLayout = useSkinLayout(skinUrl);
+  const screenOffset = skinLayout[SCREEN_KEY] ?? { dx: 0, dy: 0, scale: 1 };
   const nudgedRect = screenRect
     ? (() => {
         const nudgePct = game?.system === "gba" ? 0.03 : 0.12;
         const nudge = Math.round(screenRect.height * nudgePct);
         // GBA: expand horizontally to fill any extra space the skin allows.
         const widen = game?.system === "gba" ? Math.round(screenRect.width * 0.04) : 0;
-        return {
+        const base = {
           left: screenRect.left - widen / 2,
           top: screenRect.top + nudge,
           width: screenRect.width + widen,
           height: Math.max(1, screenRect.height - nudge),
+        };
+        // Apply the player's saved screen offset+scale (fractions of the
+        // skin's own screen-rect dimensions, so the math is viewport-safe).
+        const s = screenOffset.scale ?? 1;
+        const w = base.width * s;
+        const h = base.height * s;
+        return {
+          left: base.left + (base.width - w) / 2 + screenOffset.dx * base.width,
+          top: base.top + (base.height - h) / 2 + screenOffset.dy * base.height,
+          width: w,
+          height: h,
         };
       })()
     : null;
