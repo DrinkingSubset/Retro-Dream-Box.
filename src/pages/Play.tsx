@@ -98,6 +98,10 @@ export default function Play() {
           setError("This ROM file appears to be empty or corrupted.");
           return;
         }
+        // Warm the specific core's bytes immediately — the loader script
+        // fires next, so this is essentially a parallel head-start for the
+        // largest WASM payload (mGBA in particular).
+        warmCore(CORE_MAP[g.system] as "mgba" | "gambatte" | "fceumm");
         setGame(g);
         markPlayed(id).catch(() => {});
       })
