@@ -618,6 +618,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
           open={menuOpen}
           onOpenChange={setMenuOpen}
           hideTrigger={!!skinUrl}
+          onCustomizeLayout={skinUrl ? () => setLayoutEditorOpen(true) : undefined}
         />
       )}
 
