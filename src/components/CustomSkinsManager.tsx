@@ -75,11 +75,21 @@ export default function CustomSkinsManager() {
         <Button
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="w-full"
+          className="w-full h-auto min-h-10 py-2.5 px-3 whitespace-normal text-center leading-tight gap-2"
           size="sm"
         >
-          <Upload className="w-4 h-4" />
-          {busy ? "Importing…" : `Upload .deltaskin for ${SYSTEM_LABELS[system]}`}
+          <Upload className="w-4 h-4 shrink-0" />
+          <span className="min-w-0 break-words">
+            {busy
+              ? "Importing…"
+              : (
+                <>
+                  Upload .deltaskin
+                  <span className="hidden sm:inline"> for {SYSTEM_LABELS[system]}</span>
+                  <span className="sm:hidden"> · {SYSTEM_SHORT[system]}</span>
+                </>
+              )}
+          </span>
         </Button>
         <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
           Imported skins appear in <strong>This game</strong> settings while playing a matching ROM.
