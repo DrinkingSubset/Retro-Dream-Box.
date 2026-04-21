@@ -15,6 +15,7 @@ import {
   setSkinLayoutEntry,
   clearSkinLayout,
   inputKeyForItem,
+  SCREEN_KEY,
   type ButtonOffset,
   type SkinLayout,
 } from "@/lib/skinLayoutStore";
