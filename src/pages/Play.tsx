@@ -177,7 +177,8 @@ export default function Play() {
         getCheats(id).then((cheats) => applyCheatsToEmulator(cheats)).catch(() => {});
         // Restore the per-game default speed (1× when not customised).
         const gs = getGameSettings(id);
-        if (gs.speed && gs.speed !== 1) applySpeedToEmulator(gs.speed);
+        // Defer slightly — gameManager wires the speed toggles after onGameStart fires.
+        setTimeout(() => applySpeedToEmulator(gs.speed ?? 1), 250);
       }
     };
 
