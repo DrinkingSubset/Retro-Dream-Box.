@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2 } from "lucide-react";
-import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, GBA_VARIANTS, type SkinId, type PlayerId } from "@/lib/settingsStore";
+import { ArrowLeft, Cloud, HardDrive, Smartphone, Volume2, Vibrate, Image as ImageIcon, CheckCircle2, Sparkles } from "lucide-react";
+import { useSettings, updatePlayer, updateSettings, SKIN_LABELS, GBC_VARIANTS, GBA_VARIANTS, DISPLAY_MODE_FILTERS, DISPLAY_MODE_LABELS, type SkinId, type PlayerId, type DisplayMode } from "@/lib/settingsStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -200,7 +200,40 @@ export default function Settings() {
         </Section>
 
         {/* Display */}
-        <Section title="Display" subtitle="App appearance">
+        <Section title="Display" subtitle="Picture profile and app appearance">
+          <div className="mb-5">
+            <Label className="text-sm font-display font-semibold mb-3 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" /> Picture mode
+            </Label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Boosts retro game colors. "OLED Pop" is tuned for OLED phone screens.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {(Object.keys(DISPLAY_MODE_LABELS) as DisplayMode[]).map((mode) => {
+                const active = settings.displayMode === mode;
+                const meta = DISPLAY_MODE_LABELS[mode];
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => updateSettings({ displayMode: mode })}
+                    className={`relative rounded-2xl border p-3 text-left transition-all ${
+                      active
+                        ? "border-primary bg-primary/10 shadow-glow"
+                        : "border-border/50 bg-card/40 hover:border-primary/40"
+                    }`}
+                  >
+                    <DisplayModeSwatch filter={DISPLAY_MODE_FILTERS[mode]} />
+                    <p className="font-display font-semibold text-sm mt-2">{meta.label}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{meta.desc}</p>
+                    {active && (
+                      <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <Label className="text-sm font-display font-semibold mb-3 block">Change app icon</Label>
           <div className="grid grid-cols-4 gap-3">
             {APP_ICONS.map((icon) => {
