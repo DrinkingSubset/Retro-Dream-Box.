@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Menu, Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Menu, Save, Gauge, Lock, Camera, Sparkles, X, Trash2, Plus, Sliders, Video, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,12 +15,20 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { getCheats, saveCheats, normaliseCheatCode, type Cheat } from "@/lib/cheatStore";
 import SaveStatesDialog from "@/components/SaveStatesDialog";
+import GameSettingsDialog from "@/components/GameSettingsDialog";
+import { startCanvasRecording, type ActiveRecording } from "@/lib/canvasRecorder";
+import { updateGameSettings } from "@/lib/gameSettingsStore";
+import type { SystemId } from "@/lib/gameStore";
 
 interface Props {
   gameId: string;
+  system: SystemId;
   /** Called when the user wants to toggle the "hold buttons" mode in the parent. */
   onToggleHoldMode: () => void;
   holdMode: boolean;
+  /** Current playback speed, controlled by the parent. */
+  speed: number;
+  onSpeedChange: (speed: number) => void;
   /**
    * When true, hides the built-in floating trigger button. The host is
    * expected to open the menu via the `open` / `onOpenChange` props
@@ -32,12 +40,7 @@ interface Props {
   onOpenChange?: (open: boolean) => void;
 }
 
-/**
- * Available emulation speeds. 1× is the natural rate. We keep the list short
- * so the row fits on a single mobile line — wider grids hurt one-handed use.
- */
 const SPEEDS = [0.5, 1, 2, 4] as const;
-type Speed = (typeof SPEEDS)[number];
 
 /**
  * Bottom-left floating menu button rendered on the Play screen.
@@ -45,8 +48,11 @@ type Speed = (typeof SPEEDS)[number];
  */
 export default function PlayMenu({
   gameId,
+  system,
   onToggleHoldMode,
   holdMode,
+  speed,
+  onSpeedChange,
   hideTrigger,
   open: controlledOpen,
   onOpenChange,
@@ -59,37 +65,17 @@ export default function PlayMenu({
   };
   const [cheatsOpen, setCheatsOpen] = useState(false);
   const [statesOpen, setStatesOpen] = useState(false);
-  const [speed, setSpeed] = useState<Speed>(1);
+  const [gameSettingsOpen, setGameSettingsOpen] = useState(false);
+  const recordingRef = useRef<ActiveRecording | null>(null);
+  const [recording, setRecording] = useState(false);
 
   const emu = () => (window as any).EJS_emulator;
 
-  const setEmuSpeed = (s: Speed) => {
-    try {
-      const e = emu();
-      // mGBA / Gambatte / FCEUmm all respect setFastForwardRatio. For
-      // slow-motion (<1) we fall back to setting the libretro frame
-      // throttle directly, which EJS exposes as `setVideoBlocking`-style
-      // controls. The gameManager.setSlowMotionRatio path covers builds
-      // where it's available.
-      if (s >= 1) {
-        if (e?.setFastForwardRatio) e.setFastForwardRatio(s);
-        else if (e?.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(s);
-        // Disable any active slow-motion when going back to >=1×.
-        e?.gameManager?.setSlowMotionRatio?.(1);
-      } else {
-        // Slow-mo: ratio of 2 = half-speed in EJS conventions.
-        const ratio = Math.round(1 / s);
-        if (e?.gameManager?.setSlowMotionRatio) e.gameManager.setSlowMotionRatio(ratio);
-        else if (e?.setSlowMotionRatio) e.setSlowMotionRatio(ratio);
-        // Reset fast-forward.
-        if (e?.setFastForwardRatio) e.setFastForwardRatio(1);
-        else if (e?.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(1);
-      }
-      setSpeed(s);
-      toast({ title: `Speed: ${s}×` });
-    } catch (err: any) {
-      toast({ title: "Speed change failed", description: err?.message, variant: "destructive" });
-    }
+  const handleSpeed = (s: number) => {
+    onSpeedChange(s);
+    // Persist as the per-game default — next launch starts at this speed.
+    updateGameSettings(gameId, { speed: s });
+    toast({ title: `Speed: ${s}×` });
   };
 
   const screenshot = () => {
@@ -113,6 +99,36 @@ export default function PlayMenu({
     setOpen(false);
   };
 
+  const toggleRecording = async () => {
+    try {
+      if (recordingRef.current?.isRecording()) {
+        await recordingRef.current.stop();
+        recordingRef.current = null;
+        setRecording(false);
+        toast({ title: "Recording saved" });
+      } else {
+        recordingRef.current = startCanvasRecording();
+        setRecording(true);
+        toast({ title: "Recording started", description: "Tap again to stop & download." });
+      }
+    } catch (err: any) {
+      toast({ title: "Recording failed", description: err?.message, variant: "destructive" });
+      recordingRef.current = null;
+      setRecording(false);
+    }
+    setOpen(false);
+  };
+
+  // Stop any in-flight recording when this component unmounts (e.g. user
+  // navigates back to the library).
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current?.isRecording()) {
+        recordingRef.current.stop().catch(() => { /* ignore */ });
+      }
+    };
+  }, []);
+
   const handleHold = () => {
     onToggleHoldMode();
     setOpen(false);
@@ -131,6 +147,12 @@ export default function PlayMenu({
         </button>
       )}
 
+      {recording && (
+        <div className="fixed top-2 right-2 z-50 px-2 py-1 rounded-md bg-destructive/90 text-destructive-foreground text-xs font-mono font-bold flex items-center gap-1.5 pointer-events-none">
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" /> REC
+        </div>
+      )}
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -147,7 +169,7 @@ export default function PlayMenu({
               {SPEEDS.map((s) => (
                 <button
                   key={s}
-                  onClick={() => setEmuSpeed(s)}
+                  onClick={() => handleSpeed(s)}
                   className={`py-2 rounded-lg text-sm font-display font-semibold border transition-colors ${
                     speed === s
                       ? "bg-primary/15 border-primary/50 text-primary"
@@ -162,14 +184,22 @@ export default function PlayMenu({
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <MenuTile icon={<Save className="w-5 h-5" />} label="Save states" onClick={() => { setOpen(false); setStatesOpen(true); }} />
+            <MenuTile icon={<Sliders className="w-5 h-5" />} label="This game" onClick={() => { setOpen(false); setGameSettingsOpen(true); }} />
             <MenuTile icon={<Sparkles className="w-5 h-5" />} label="Cheat codes" onClick={() => { setOpen(false); setCheatsOpen(true); }} />
             <MenuTile icon={<Lock className="w-5 h-5" />} label={holdMode ? "Hold: ON" : "Hold buttons"} onClick={handleHold} active={holdMode} />
             <MenuTile icon={<Camera className="w-5 h-5" />} label="Screenshot" onClick={screenshot} />
+            <MenuTile
+              icon={recording ? <Square className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+              label={recording ? "Stop recording" : "Record video"}
+              onClick={toggleRecording}
+              active={recording}
+            />
           </div>
         </DialogContent>
       </Dialog>
 
       <SaveStatesDialog gameId={gameId} open={statesOpen} onOpenChange={setStatesOpen} />
+      <GameSettingsDialog gameId={gameId} system={system} open={gameSettingsOpen} onOpenChange={setGameSettingsOpen} />
       <CheatsDialog gameId={gameId} open={cheatsOpen} onOpenChange={setCheatsOpen} />
     </>
   );
@@ -331,5 +361,29 @@ export function applyCheatsToEmulator(cheats: Cheat[]) {
     });
   } catch {
     // ignore — some cores may not implement cheats
+  }
+}
+
+/**
+ * Apply a numeric speed multiplier to the running emulator. 1× restores
+ * the natural rate; values <1 use slow-motion, values >1 fast-forward.
+ */
+export function applySpeedToEmulator(speed: number) {
+  const e = (window as any).EJS_emulator;
+  if (!e) return;
+  try {
+    if (speed >= 1) {
+      if (e.setFastForwardRatio) e.setFastForwardRatio(speed);
+      else if (e.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(speed);
+      e.gameManager?.setSlowMotionRatio?.(1);
+    } else {
+      const ratio = Math.round(1 / speed);
+      if (e.gameManager?.setSlowMotionRatio) e.gameManager.setSlowMotionRatio(ratio);
+      else if (e.setSlowMotionRatio) e.setSlowMotionRatio(ratio);
+      if (e.setFastForwardRatio) e.setFastForwardRatio(1);
+      else if (e.gameManager?.setFastForwardRatio) e.gameManager.setFastForwardRatio(1);
+    }
+  } catch {
+    // ignore — core may not support
   }
 }
