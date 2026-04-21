@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   ExternalLink, Pencil, Image as ImageIcon, Share2, Settings as SettingsIcon,
-  Save, FileText, Trash2, Clipboard, FolderOpen, Database,
+  Save, FileText, Trash2, Clipboard, FolderOpen, Database, Heart, Tag, Loader2,
 } from "lucide-react";
-import { renameGame, setArtwork, deleteGame, type GameMeta } from "@/lib/gameStore";
+import { renameGame, setArtwork, deleteGame, toggleFavorite, setCollections, type GameMeta } from "@/lib/gameStore";
+import { fetchBoxArtAsDataUrl } from "@/lib/boxArtFetch";
 import { toast } from "sonner";
 
 interface Props {
