@@ -147,10 +147,10 @@ export default function PlayMenu({
         <button
           onClick={() => setOpen(true)}
           aria-label="Game menu"
-          className="fixed bottom-3 left-3 z-40 w-11 h-11 rounded-full bg-background/70 backdrop-blur-md border border-border/60 shadow-elevated flex items-center justify-center text-foreground hover:bg-background/90 active:scale-95 transition"
+          className="fixed bottom-3 left-3 z-40 px-3 h-10 rounded-full bg-background/70 backdrop-blur-md border border-border/60 shadow-elevated flex items-center gap-1.5 text-foreground hover:bg-background/90 active:scale-95 transition text-xs font-display font-semibold"
           style={{ marginBottom: "env(safe-area-inset-bottom)" }}
         >
-          <Menu className="w-5 h-5" />
+          <Sliders className="w-4 h-4" /> Menu
         </button>
       )}
 
@@ -160,16 +160,22 @@ export default function PlayMenu({
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Game menu</DialogTitle>
-            <DialogDescription>Quick actions for this session.</DialogDescription>
-          </DialogHeader>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-2xl border-t border-border/60 bg-background/95 backdrop-blur-xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[80vh] overflow-y-auto"
+        >
+          {/* Drag handle */}
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/30" />
+
+          <SheetHeader className="text-left mb-3">
+            <SheetTitle className="text-base">Game menu</SheetTitle>
+            <SheetDescription className="text-xs">Quick actions for this session.</SheetDescription>
+          </SheetHeader>
 
           {/* Speed control — single row, four buttons. */}
-          <div>
-            <div className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+          <div className="mb-3">
+            <div className="text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
               <Gauge className="w-3.5 h-3.5" /> Speed
             </div>
             <div className="grid grid-cols-4 gap-1.5">
@@ -177,7 +183,7 @@ export default function PlayMenu({
                 <button
                   key={s}
                   onClick={() => handleSpeed(s)}
-                  className={`py-2 rounded-lg text-sm font-display font-semibold border transition-colors ${
+                  className={`py-1.5 rounded-lg text-sm font-display font-semibold border transition-colors ${
                     speed === s
                       ? "bg-primary/15 border-primary/50 text-primary"
                       : "bg-secondary/40 border-border/50 hover:bg-secondary/70"
@@ -189,21 +195,21 @@ export default function PlayMenu({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <MenuTile icon={<Save className="w-5 h-5" />} label="Save states" onClick={() => { setOpen(false); setStatesOpen(true); }} />
-            <MenuTile icon={<Sliders className="w-5 h-5" />} label="This game" onClick={() => { setOpen(false); setGameSettingsOpen(true); }} />
-            <MenuTile icon={<Sparkles className="w-5 h-5" />} label="Cheat codes" onClick={() => { setOpen(false); setCheatsOpen(true); }} />
-            <MenuTile icon={<Lock className="w-5 h-5" />} label={holdMode ? "Hold: ON" : "Hold buttons"} onClick={handleHold} active={holdMode} />
-            <MenuTile icon={<Camera className="w-5 h-5" />} label="Screenshot" onClick={screenshot} />
+          <div className="grid grid-cols-3 gap-1.5">
+            <MenuTile icon={<Save className="w-4 h-4" />} label="Saves" onClick={() => { setOpen(false); setStatesOpen(true); }} />
+            <MenuTile icon={<Sliders className="w-4 h-4" />} label="Game" onClick={() => { setOpen(false); setGameSettingsOpen(true); }} />
+            <MenuTile icon={<Sparkles className="w-4 h-4" />} label="Cheats" onClick={() => { setOpen(false); setCheatsOpen(true); }} />
+            <MenuTile icon={<Lock className="w-4 h-4" />} label={holdMode ? "Hold ✓" : "Hold"} onClick={handleHold} active={holdMode} />
+            <MenuTile icon={<Camera className="w-4 h-4" />} label="Shot" onClick={screenshot} />
             <MenuTile
-              icon={recording ? <Square className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-              label={recording ? "Stop recording" : "Record video"}
+              icon={recording ? <Square className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+              label={recording ? "Stop" : "Record"}
               onClick={toggleRecording}
               active={recording}
             />
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <SaveStatesDialog gameId={gameId} open={statesOpen} onOpenChange={setStatesOpen} />
       <GameSettingsDialog gameId={gameId} system={system} open={gameSettingsOpen} onOpenChange={setGameSettingsOpen} />
@@ -226,14 +232,14 @@ function MenuTile({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border transition-colors ${
+      className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl border transition-colors ${
         active
           ? "bg-primary/15 border-primary/40 text-primary"
           : "bg-secondary/40 border-border/50 hover:bg-secondary/70"
       }`}
     >
       {icon}
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-[11px] font-medium leading-none">{label}</span>
     </button>
   );
 }
