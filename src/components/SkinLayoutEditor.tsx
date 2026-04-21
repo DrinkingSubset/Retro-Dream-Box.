@@ -275,3 +275,114 @@ function DraggableRegion({
     </div>
   );
 }
+
+/**
+ * Game-screen draggable. Same offset model as buttons (dx/dy as fractions
+ * of the skin's mappingSize), plus a scale handle in the bottom-right
+ * corner so the player can resize the picture window.
+ */
+function ScreenRegion({
+  screenFrame,
+  scale,
+  mappingWidth,
+  mappingHeight,
+  offset,
+  onChange,
+}: {
+  screenFrame: { x: number; y: number; width: number; height: number };
+  scale: number;
+  mappingWidth: number;
+  mappingHeight: number;
+  offset: ButtonOffset;
+  onChange: (offset: ButtonOffset) => void;
+}) {
+  const dragRef = useRef<
+    | { mode: "move"; x: number; y: number; baseDx: number; baseDy: number }
+    | { mode: "resize"; x: number; y: number; baseScale: number }
+    | null
+  >(null);
+
+  const s = offset.scale ?? 1;
+  const left = (screenFrame.x + offset.dx * mappingWidth) * scale;
+  const top = (screenFrame.y + offset.dy * mappingHeight) * scale;
+  const width = screenFrame.width * scale * s;
+  const height = screenFrame.height * scale * s;
+
+  return (
+    <div
+      role="button"
+      aria-label="Move screen"
+      className="absolute rounded-md border-2 border-dashed border-accent/80 bg-accent/10 flex items-center justify-center text-[11px] font-display font-semibold text-accent-foreground cursor-grab active:cursor-grabbing"
+      style={{ left, top, width, height, touchAction: "none" }}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        dragRef.current = {
+          mode: "move",
+          x: e.clientX,
+          y: e.clientY,
+          baseDx: offset.dx,
+          baseDy: offset.dy,
+        };
+      }}
+      onPointerMove={(e) => {
+        const start = dragRef.current;
+        if (!start) return;
+        if (start.mode === "move") {
+          const dxPx = e.clientX - start.x;
+          const dyPx = e.clientY - start.y;
+          onChange({
+            dx: start.baseDx + dxPx / (mappingWidth * scale),
+            dy: start.baseDy + dyPx / (mappingHeight * scale),
+            scale: offset.scale,
+          });
+        } else {
+          const dPx = Math.max(e.clientX - start.x, e.clientY - start.y);
+          // 1 px corner drag ≈ 1/avg-side scale change.
+          const avg = (screenFrame.width + screenFrame.height) * 0.5 * scale;
+          const next = Math.max(0.4, Math.min(2, start.baseScale + dPx / avg));
+          onChange({ dx: offset.dx, dy: offset.dy, scale: next });
+        }
+      }}
+      onPointerUp={() => {
+        dragRef.current = null;
+      }}
+      onPointerCancel={() => {
+        dragRef.current = null;
+      }}
+    >
+      Screen
+      {/* Resize handle */}
+      <div
+        className="absolute -right-1.5 -bottom-1.5 w-5 h-5 rounded-full bg-accent border-2 border-background cursor-se-resize"
+        style={{ touchAction: "none" }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+          dragRef.current = {
+            mode: "resize",
+            x: e.clientX,
+            y: e.clientY,
+            baseScale: s,
+          };
+        }}
+        onPointerMove={(e) => {
+          const start = dragRef.current;
+          if (!start || start.mode !== "resize") return;
+          const dPx = Math.max(e.clientX - start.x, e.clientY - start.y);
+          const avg = (screenFrame.width + screenFrame.height) * 0.5 * scale;
+          const next = Math.max(0.4, Math.min(2, start.baseScale + dPx / avg));
+          onChange({ dx: offset.dx, dy: offset.dy, scale: next });
+        }}
+        onPointerUp={() => {
+          dragRef.current = null;
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
+        aria-label="Resize screen"
+      />
+    </div>
+  );
+}
