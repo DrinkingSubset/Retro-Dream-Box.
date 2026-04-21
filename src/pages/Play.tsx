@@ -337,6 +337,13 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
     [],
   );
 
+  // PlayMenu open state — lifted up so the skin's "menu" hit-region (the
+  // small triangle button on most Delta skins) can open the same menu the
+  // floating button used to. When the active skin defines its own menu
+  // region, we hide the redundant floating button.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const handleSkinMenu = useCallback(() => setMenuOpen(true), []);
+
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
   // The CSS `filter` enriches the picture per the user's display profile —
