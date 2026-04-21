@@ -443,6 +443,7 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   // region, we hide the redundant floating button.
   const [menuOpen, setMenuOpen] = useState(false);
   const handleSkinMenu = useCallback(() => setMenuOpen(true), []);
+  const [layoutEditorOpen, setLayoutEditorOpen] = useState(false);
 
   // The EmulatorJS canvas is positioned absolutely. When a skin reports a
   // rect we honour it; otherwise we centre in the legacy stage (below).
@@ -453,15 +454,19 @@ function PlayLayout({ game, ready, started, sendInput, onBack, containerRef, hol
   const shaderStyles = getShaderStyles(gameOverrides.shader ?? "off");
   const composedFilter = composeFilters(pictureFilter, shaderStyles.extraCanvasFilter);
   // Nudge the canvas down within the skin's screen rect so the picture sits
-  // closer to the bezel/logo (per design feedback). We trim a small slice off
-  // the top to keep the bottom edge anchored where the skin expects.
+  // closer to the bezel/logo. GBA skins have a much larger native screen
+  // window so we use a smaller nudge (and grow horizontally to use the full
+  // width). GBC keeps the larger 12% nudge to clear the GBC branding.
   const nudgedRect = screenRect
     ? (() => {
-        const nudge = Math.round(screenRect.height * 0.12);
+        const nudgePct = game?.system === "gba" ? 0.03 : 0.12;
+        const nudge = Math.round(screenRect.height * nudgePct);
+        // GBA: expand horizontally to fill any extra space the skin allows.
+        const widen = game?.system === "gba" ? Math.round(screenRect.width * 0.04) : 0;
         return {
-          left: screenRect.left,
+          left: screenRect.left - widen / 2,
           top: screenRect.top + nudge,
-          width: screenRect.width,
+          width: screenRect.width + widen,
           height: Math.max(1, screenRect.height - nudge),
         };
       })()
