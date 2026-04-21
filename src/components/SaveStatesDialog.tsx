@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Save, Download, Trash2, X } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import {
