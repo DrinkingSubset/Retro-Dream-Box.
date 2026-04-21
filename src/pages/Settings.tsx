@@ -394,3 +394,25 @@ function SkinPreview({ skin }: { skin: SkinId }) {
     </div>
   );
 }
+
+/**
+ * Tiny color-bar preview that lives behind a CSS `filter`. Deliberately uses
+ * a fixed reference gradient — this swatch's job is to *demonstrate the
+ * filter*, so the underlying colors must stay constant across themes.
+ */
+function DisplayModeSwatch({ filter }: { filter: string }) {
+  return (
+    <div
+      className="h-10 rounded-lg overflow-hidden flex"
+      style={{ filter }}
+      aria-hidden
+    >
+      <div className="flex-1" style={{ background: "#e64545" }} />
+      <div className="flex-1" style={{ background: "#e6a845" }} />
+      <div className="flex-1" style={{ background: "#e6e645" }} />
+      <div className="flex-1" style={{ background: "#45c845" }} />
+      <div className="flex-1" style={{ background: "#458de6" }} />
+      <div className="flex-1" style={{ background: "#a045e6" }} />
+    </div>
+  );
+}
